@@ -49,7 +49,12 @@ public sealed class JsonSequence<T> : IResult, IEndpointMetadataProvider, IStatu
     #endregion
 
     #region ContentType
-    const string CONTENT_TYPE = MediaTypeNames.Application.JsonSequence;
+    const string CONTENT_TYPE =
+#if NET8_0_OR_GREATER
+        MediaTypeNames.Application.JsonSequence;
+#else
+        "application/json-seq";
+#endif
     /// <summary>
     /// json-seq content type
     /// </summary>
@@ -97,10 +102,10 @@ public sealed class JsonSequence<T> : IResult, IEndpointMetadataProvider, IStatu
             httpContext.Response.ContentType = ContentType;
 
         var SerializerOptions = (httpContext.RequestServices.GetService<IOptions<JsonOptions>>()?.Value ?? new JsonOptions()).SerializerOptions;
-        var jsonTypeInfo = SerializerOptions.GetTypeInfo(typeof(T));
+        var jsonTypeInfo = SerializerOptions.GetTypeInfo<T>();
         if (_asyncValues is not null)
             return InternalFormatWriter
-                .WriteAsyncEnumerableAsync<IAsyncEnumerable<T>, T>(
+                .WriteAsyncEnumerableAsync(
                     values: _asyncValues,
                     httpContext: httpContext,
                     SerializerOptions: SerializerOptions,
@@ -112,7 +117,7 @@ public sealed class JsonSequence<T> : IResult, IEndpointMetadataProvider, IStatu
                 );
         if (_values is not null)
             return InternalFormatWriter
-                .WriteEnumerableAsync<IEnumerable<T>, T>(
+                .WriteEnumerableAsync(
                     values: _values,
                     httpContext: httpContext,
                     SerializerOptions: SerializerOptions,

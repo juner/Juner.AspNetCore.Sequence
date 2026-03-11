@@ -1,0 +1,17 @@
+<Project>
+    <PropertyGroup>
+        <TargetFrameworks>net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <Deterministic>true</Deterministic>
+        <LangVersion>default</LangVersion>
+        <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+        <WarningsAsErrors>true</WarningsAsErrors>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    </PropertyGroup>
+    <ItemGroup>
+        <CompilerVisibleProperty Include="RootNamespace" />
+        <CompilerVisibleProperty Include="ProjectDir" />
+    </ItemGroup>
+</Project>

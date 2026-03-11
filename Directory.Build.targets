@@ -1,0 +1,10 @@
+<Project>
+    <ItemGroup>    
+        <PackageReference Update="coverlet.collector" Version="8.0.0" />
+        <PackageReference Update="coverlet.msbuild" Version="8.0.0" />
+		<PackageReference Update="MSTest" Version="4.0.2" />
+    </ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net7.0' Or '$(TargetFramework)' == 'net6.0'">
+		<PackageReference Update="MSTest" Version="3.10.1" />
+	</ItemGroup>
+</Project>

@@ -94,10 +94,8 @@ internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSeriali
           } ?? throw new InvalidOperationException();
         method = method.MakeGenericMethod(ObjectType, type);
 
-        var result = method
-          .Invoke(this, [Object, httpContext, JsonTypeInfo, SerializerOptions, SelectedEncoding, Begin, End, cancellationToken])
-           as Task
-           ?? throw new InvalidOperationException();
+        var result = (Task)method
+          .Invoke(this, [Object, httpContext, JsonTypeInfo, SerializerOptions, SelectedEncoding, Begin, End, cancellationToken])!;
 
         await result;
     }
@@ -114,7 +112,7 @@ internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSeriali
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode",
 Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switch, which is set to false by default for trimmed ASP.NET apps, ensures the JsonSerializer doesn't use Reflection.")]
     [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = "See above.")]
-    public static async Task WriteEnumerableAsync<Enumerable, T>(Enumerable values, HttpContext httpContext, JsonTypeInfo? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
+    public static async Task WriteEnumerableAsync<Enumerable, T>(Enumerable values, HttpContext httpContext, JsonTypeInfo<T>? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
   where Enumerable : IEnumerable<T>
     {
         if (SelectedEncoding.CodePage == Encoding.UTF8.CodePage)
@@ -169,7 +167,7 @@ Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switc
     Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switch, which is set to false by default for trimmed ASP.NET apps, ensures the JsonSerializer doesn't use Reflection.")]
     [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = "See above.")]
     public static async Task WriteAsyncEnumerableAsync<AsyncEnumerable, T>(
-        AsyncEnumerable values, HttpContext httpContext, JsonTypeInfo? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
+        AsyncEnumerable values, HttpContext httpContext, JsonTypeInfo<T>? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
       where AsyncEnumerable : IAsyncEnumerable<T>
     {
         if (SelectedEncoding.CodePage == Encoding.UTF8.CodePage)
@@ -220,7 +218,7 @@ Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switc
         }
     }
 #if NET9_0_OR_GREATER
-    static async ValueTask WriteRecordAsync<T>(PipeWriter writer, T value, JsonTypeInfo? jsonTypeInfo, JsonSerializerOptions SerializerOptions, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
+    static async ValueTask WriteRecordAsync<T>(PipeWriter writer, T value, JsonTypeInfo<T>? jsonTypeInfo, JsonSerializerOptions SerializerOptions, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
     {
         if (Begin is not { IsEmpty: true})
             await writer.WriteAsync(Begin, cancellationToken);
@@ -233,7 +231,7 @@ Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switc
         await writer.FlushAsync(cancellationToken);
     }
 #endif
-    static async ValueTask WriteRecordAsync<T>(Stream writer, T value, JsonTypeInfo? jsonTypeInfo, JsonSerializerOptions SerializerOptions, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken = default)
+    static async ValueTask WriteRecordAsync<T>(Stream writer, T value, JsonTypeInfo<T>? jsonTypeInfo, JsonSerializerOptions SerializerOptions, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken = default)
     {
         if (Begin is not { IsEmpty: true })
             await writer.WriteAsync(Begin, cancellationToken);

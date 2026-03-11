@@ -1,7 +1,9 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
   </Folder>
-  <Project Path="Sequence.Tests/Sequence.Tests.csproj" Id="25ca50a6-a07b-47b7-a320-e79db2d01635" />
-  <Project Path="Sequence/Sequence.csproj" />
+  <Project Path="Sequence.Tests/Juner.AspNetCore.Sequence.Tests.csproj" />
+  <Project Path="Sequence/Juner.AspNetCore.Sequence.csproj" />
 </Solution>
