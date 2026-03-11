@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Juner.AspNetCore.Sequence.Internals;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using System.Net.Mime;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using Microsoft.AspNetCore.Http;
 
 namespace Juner.AspNetCore.Sequence.Formatters;
 
@@ -25,7 +26,8 @@ public class JsonSequenceOutputFormatter : TextOutputFormatter
     {
         SerializerOptions = jsonSerializerOptions;
 #if NET8_0_OR_GREATER
-        jsonSerializerOptions.MakeReadOnly();
+        if (!jsonSerializerOptions.IsReadOnly)
+            jsonSerializerOptions.MakeReadOnly();
 #endif
         SupportedMediaTypes.Add(ContentType);
         SupportedEncodings.Add(Encoding.UTF8);
@@ -80,12 +82,15 @@ public class JsonSequenceOutputFormatter : TextOutputFormatter
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(selectedEncoding);
 
-        await new InternalSequenceOutputFormatWriter
-        {
-            Begin = RS,
-            End = LF,
-            SerializerOptions = SerializerOptions,
-        }.WriteResponseBodyAsync(context, selectedEncoding);
+        var cancellationToken = context.HttpContext.RequestAborted;
+
+        await InternalFormatWriter.Create(
+            serializerOptions: SerializerOptions,
+            begin: RS,
+            end: LF,
+            context: context,
+            selectedEncoding: selectedEncoding
+        ).WriteResponseBodyAsync(cancellationToken);
     }
 
     #region RS

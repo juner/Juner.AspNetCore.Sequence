@@ -1,0 +1,12 @@
+﻿using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.WebUtilities;
+using System.Text;
+
+namespace Juner.AspNetCore.Sequence.Formatters;
+
+public class TestHttpResponseStreamWriterFactory : IHttpResponseStreamWriterFactory
+{
+    public const int DefaultBufferSize = 16 * 1024;
+
+    public TextWriter CreateWriter(Stream stream, Encoding encoding) => new HttpResponseStreamWriter(stream, encoding, DefaultBufferSize);
+}

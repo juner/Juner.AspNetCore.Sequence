@@ -12,4 +12,8 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Juner.AspNetCore.Sequence.Tests" />
+  </ItemGroup>
+
 </Project>
