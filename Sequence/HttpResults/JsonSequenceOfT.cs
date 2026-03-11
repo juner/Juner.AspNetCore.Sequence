@@ -94,9 +94,8 @@ public sealed class JsonSequence<T> : IResult, IEndpointMetadataProvider, IStatu
         ArgumentNullException.ThrowIfNull(httpContext);
 
         // Creating the logger with a string to preserve the category after the refactoring.
-        var loggerFactory = httpContext.RequestServices.GetRequiredService<ILoggerFactory>();
-        var logger = loggerFactory.CreateLogger("Sequential.AspNetCore.Http.Result.JsonSequenceObjectResult");
-
+        var logger = httpContext.RequestServices.GetRequiredService<ILogger<JsonSequence<T>>>();
+        
         httpContext.Response.StatusCode = StatusCode;
         if (string.IsNullOrEmpty(httpContext.Response.ContentType))
             httpContext.Response.ContentType = ContentType;
