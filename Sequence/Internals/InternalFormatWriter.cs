@@ -6,6 +6,8 @@ using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.Extensions.Logging;
+
 
 #if NET9_0_OR_GREATER
 using System.IO.Pipelines;
@@ -13,7 +15,7 @@ using System.IO.Pipelines;
 
 namespace Juner.AspNetCore.Sequence.Internals;
 
-internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSerializerOptions serializerOptions, Encoding selectedEncoding, HttpContext httpContext, EnumerableType OutputType, Type type, ReadOnlyMemory<byte> begin = default, ReadOnlyMemory<byte> end = default)
+internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSerializerOptions serializerOptions, Encoding selectedEncoding, HttpContext httpContext, EnumerableType OutputType, Type type, ILogger logger, ReadOnlyMemory<byte> begin = default, ReadOnlyMemory<byte> end = default)
 {
     /// <summary>
     /// 
@@ -25,11 +27,11 @@ internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSeriali
     /// <param name="end"></param>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    public static InternalFormatWriter Create(JsonSerializerOptions serializerOptions, OutputFormatterWriteContext context, Encoding selectedEncoding, ReadOnlyMemory<byte> begin = default, ReadOnlyMemory<byte> end = default)
+    public static InternalFormatWriter Create(JsonSerializerOptions serializerOptions, OutputFormatterWriteContext context, Encoding selectedEncoding, ILogger logger, ReadOnlyMemory<byte> begin = default, ReadOnlyMemory<byte> end = default)
     {
         if (!TryGetOutputMode(context.ObjectType, out var outputType, out var type))
             throw new InvalidOperationException();
-        return new InternalFormatWriter(context.Object, context.ObjectType, serializerOptions, selectedEncoding, context.HttpContext, outputType, type, begin, end);
+        return new InternalFormatWriter(context.Object, context.ObjectType, serializerOptions, selectedEncoding, context.HttpContext, outputType, type, logger, begin, end);
     }
     readonly ReadOnlyMemory<byte> Begin = begin;
     readonly ReadOnlyMemory<byte> End = end;
@@ -38,8 +40,7 @@ internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSeriali
     readonly Encoding SelectedEncoding = selectedEncoding;
     readonly HttpContext httpContext = httpContext;
     readonly EnumerableType OutputType = OutputType;
-
-
+    private readonly ILogger logger = logger;
     static IDictionary<Type, EnumerableType>? _targetInterface;
     static IDictionary<Type, EnumerableType> TargetInterfaces => _targetInterface ??= new Dictionary<Type, EnumerableType>()
     {
@@ -95,7 +96,7 @@ internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSeriali
         method = method.MakeGenericMethod(ObjectType, type);
 
         var result = (Task)method
-          .Invoke(this, [Object, httpContext, JsonTypeInfo, SerializerOptions, SelectedEncoding, Begin, End, cancellationToken])!;
+          .Invoke(this, [Object, httpContext, JsonTypeInfo, SerializerOptions, SelectedEncoding, logger, Begin, End, cancellationToken])!;
 
         await result;
     }
@@ -112,7 +113,7 @@ internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSeriali
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode",
 Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switch, which is set to false by default for trimmed ASP.NET apps, ensures the JsonSerializer doesn't use Reflection.")]
     [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = "See above.")]
-    public static async Task WriteEnumerableAsync<Enumerable, T>(Enumerable values, HttpContext httpContext, JsonTypeInfo<T>? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
+    public static async Task WriteEnumerableAsync<Enumerable, T>(Enumerable values, HttpContext httpContext, JsonTypeInfo<T>? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ILogger logger, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
   where Enumerable : IEnumerable<T>
     {
         if (SelectedEncoding.CodePage == Encoding.UTF8.CodePage)
@@ -167,7 +168,7 @@ Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switc
     Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switch, which is set to false by default for trimmed ASP.NET apps, ensures the JsonSerializer doesn't use Reflection.")]
     [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = "See above.")]
     public static async Task WriteAsyncEnumerableAsync<AsyncEnumerable, T>(
-        AsyncEnumerable values, HttpContext httpContext, JsonTypeInfo<T>? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
+        AsyncEnumerable values, HttpContext httpContext, JsonTypeInfo<T>? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ILogger logger, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
       where AsyncEnumerable : IAsyncEnumerable<T>
     {
         if (SelectedEncoding.CodePage == Encoding.UTF8.CodePage)

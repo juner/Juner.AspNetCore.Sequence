@@ -8,9 +8,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Reflection;
 using System.Text;
-using System.Text.Json.Serialization.Metadata;
+using Microsoft.Extensions.Logging.Abstractions;
 #if NET8_0_OR_GREATER
 using System.Net.Mime;
+#else
+using System.Text.Json.Serialization.Metadata;
 #endif
 
 namespace Juner.AspNetCore.Sequence.HttpResults;
@@ -97,7 +99,7 @@ public sealed class JsonSequence<T> : IResult, IEndpointMetadataProvider, IStatu
         ArgumentNullException.ThrowIfNull(httpContext);
 
         // Creating the logger with a string to preserve the category after the refactoring.
-        var logger = httpContext.RequestServices.GetRequiredService<ILogger<JsonSequence<T>>>();
+        var logger = httpContext.RequestServices.GetService<ILogger<JsonSequence<T>>>() ?? NullLogger<JsonSequence<T>>.Instance;
         
         httpContext.Response.StatusCode = StatusCode;
         if (string.IsNullOrEmpty(httpContext.Response.ContentType))
@@ -118,6 +120,7 @@ public sealed class JsonSequence<T> : IResult, IEndpointMetadataProvider, IStatu
                     Begin: RS,
                     End: LF,
                     SelectedEncoding: Encoding.UTF8,
+                    logger: logger,
                     cancellationToken: httpContext.RequestAborted
                 );
         if (_values is not null)
@@ -130,6 +133,7 @@ public sealed class JsonSequence<T> : IResult, IEndpointMetadataProvider, IStatu
                     Begin: RS,
                     End: LF,
                     SelectedEncoding: Encoding.UTF8,
+                    logger: logger,
                     cancellationToken: httpContext.RequestAborted
 
                 );

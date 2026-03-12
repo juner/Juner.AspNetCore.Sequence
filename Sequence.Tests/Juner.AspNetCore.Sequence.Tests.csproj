@@ -22,7 +22,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <AssemblyAttribute Include="System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage"></AssemblyAttribute>
+    <AssemblyAttribute Include="System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute"></AssemblyAttribute>
   </ItemGroup>
 
   <Target Name="TestResultCleaning" AfterTargets="Clean">

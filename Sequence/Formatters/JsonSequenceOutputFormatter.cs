@@ -3,19 +3,22 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using System.Net.Mime;
 using System.Text;
-using System.Text.Encodings.Web;
-using System.Text.Json;
+#if NET8_0_OR_GREATER
+using System.Net.Mime;
+#else                         
 using System.Text.Json.Serialization.Metadata;
+#endif
 
 namespace Juner.AspNetCore.Sequence.Formatters;
 
 /// <summary>
 /// application/json-seq 対応の フォーマッター
 /// </summary>
-public class JsonSequenceOutputFormatter : TextOutputFormatter
+public partial class JsonSequenceOutputFormatter : TextOutputFormatter
 {
     /// <summary>
     /// 
@@ -59,16 +62,21 @@ public class JsonSequenceOutputFormatter : TextOutputFormatter
         ArgumentNullException.ThrowIfNull(selectedEncoding);
 
         var cancellationToken = context.HttpContext.RequestAborted;
-        var jsonSerializerOptions = (context.HttpContext.RequestServices.GetService<IOptions<JsonOptions>>()?.Value ?? new JsonOptions()).JsonSerializerOptions;
+        var logger = context.HttpContext.RequestServices.GetService<ILogger<JsonSequenceOutputFormatter>>() ?? NullLogger<JsonSequenceOutputFormatter>.Instance;
+        var options = context.HttpContext.RequestServices.GetService<IOptions<JsonOptions>>();
+        if (options is null)
+            Log.LogNotHaveJsonOptions(logger);
+        var serializerOptions = (options?.Value ?? new JsonOptions()).JsonSerializerOptions;
 #if !NET8_0_OR_GREATER
-        jsonSerializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
+        serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
 #endif
         await InternalFormatWriter.Create(
-            serializerOptions: jsonSerializerOptions,
+            serializerOptions: serializerOptions,
             begin: RS,
             end: LF,
             context: context,
-            selectedEncoding: selectedEncoding
+            selectedEncoding: selectedEncoding,
+            logger: logger
         ).WriteResponseBodyAsync(cancellationToken);
     }
 
@@ -81,6 +89,12 @@ public class JsonSequenceOutputFormatter : TextOutputFormatter
     static ReadOnlyMemory<byte>? _lf;
     static ReadOnlyMemory<byte> LF => _lf ??= "\n"u8.ToArray();
     #endregion
-
-
+    static partial class Log
+    {
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "not register IOptions<Microsoft.AspNetCore.Mvc.JsonOptions>"
+        )]
+        public static partial void LogNotHaveJsonOptions(ILogger logger);
+    }
 }
