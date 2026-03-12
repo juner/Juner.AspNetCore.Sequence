@@ -1,0 +1,27 @@
+{
+	"folders": [
+		{
+			"name": "root",
+			"path": ".",
+		},
+		{
+			"name": "Juner.AspNetCore.Sequence",
+			"path": "./Sequence",
+		},
+		{
+			"name": "Juner.AspNetCore.Sequence.Tests",
+			"path": "./Sequence.Tests",
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"**/.git": true,
+			"**/.svn": true,
+			"**/.hg": true,
+			"**/.DS_Store": true,
+			"**/Thumbs.db": true,
+			"Sequence": true,
+			"Sequence.Tests": true,
+		}
+	}
+}
