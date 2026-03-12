@@ -6,9 +6,12 @@ using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Net.Mime;
 using System.Reflection;
 using System.Text;
+using System.Text.Json.Serialization.Metadata;
+#if NET8_0_OR_GREATER
+using System.Net.Mime;
+#endif
 
 namespace Juner.AspNetCore.Sequence.HttpResults;
 
@@ -100,14 +103,17 @@ public sealed class JsonSequence<T> : IResult, IEndpointMetadataProvider, IStatu
         if (string.IsNullOrEmpty(httpContext.Response.ContentType))
             httpContext.Response.ContentType = ContentType;
 
-        var SerializerOptions = (httpContext.RequestServices.GetService<IOptions<JsonOptions>>()?.Value ?? new JsonOptions()).SerializerOptions;
-        var jsonTypeInfo = SerializerOptions.GetTypeInfo<T>();
+        var serializerOptions = (httpContext.RequestServices.GetService<IOptions<JsonOptions>>()?.Value ?? new JsonOptions()).SerializerOptions;
+#if !NET8_0_OR_GREATER
+        serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
+#endif
+        var jsonTypeInfo = serializerOptions.GetTypeInfo<T>();
         if (_asyncValues is not null)
             return InternalFormatWriter
                 .WriteAsyncEnumerableAsync(
                     values: _asyncValues,
                     httpContext: httpContext,
-                    SerializerOptions: SerializerOptions,
+                    SerializerOptions: serializerOptions,
                     JsonTypeInfo: jsonTypeInfo,
                     Begin: RS,
                     End: LF,
@@ -119,7 +125,7 @@ public sealed class JsonSequence<T> : IResult, IEndpointMetadataProvider, IStatu
                 .WriteEnumerableAsync(
                     values: _values,
                     httpContext: httpContext,
-                    SerializerOptions: SerializerOptions,
+                    SerializerOptions: serializerOptions,
                     JsonTypeInfo: jsonTypeInfo,
                     Begin: RS,
                     End: LF,

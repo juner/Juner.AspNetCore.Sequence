@@ -1,5 +1,9 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
@@ -40,7 +44,7 @@ public class JsonSequenceOutputFormatterTests
         }
         var serializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
-        var formatter = new JsonSequenceOutputFormatter(serializerOptions);
+        var formatter = new JsonSequenceOutputFormatter();
         var actual = formatter.CanWriteResult(context);
         Assert.AreEqual(expect, actual);
 
@@ -48,7 +52,10 @@ public class JsonSequenceOutputFormatterTests
     }
     static DefaultHttpContext MakeHttpContext(string? accept)
     {
-        var httpContext = new DefaultHttpContext();
+        var httpContext = new DefaultHttpContext()
+        {
+            RequestServices = CreateServices(),
+        };
         if (!string.IsNullOrEmpty(accept))
             httpContext.Request.Headers.Accept = accept;
         return httpContext;
@@ -100,9 +107,7 @@ public class JsonSequenceOutputFormatterTests
             var httpContext = MakeHttpContext(accept, acceptEncoding);
             context = new OutputFormatterWriteContext(httpContext, writerFactory, objectType, @object);
         }
-        var serializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-        serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
-        var formatter = new JsonSequenceOutputFormatter(serializerOptions);
+        var formatter = new JsonSequenceOutputFormatter();
         using var stream = new MemoryStream();
         context.HttpContext.Response.Body = stream;
         await formatter.WriteAsync(context);
@@ -113,11 +118,21 @@ public class JsonSequenceOutputFormatterTests
     }
     static DefaultHttpContext MakeHttpContext(string? accept, string? acceptEncoding)
     {
-        var httpContext = new DefaultHttpContext();
+        var httpContext = new DefaultHttpContext()
+        {
+            RequestServices = CreateServices(),
+        };
         if (!string.IsNullOrEmpty(accept))
             httpContext.Request.Headers.Accept = accept;
         if (!string.IsNullOrEmpty(acceptEncoding))
             httpContext.Request.Headers.AcceptEncoding = acceptEncoding;
         return httpContext;
+    }
+
+    private static ServiceProvider CreateServices()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        return services.BuildServiceProvider();
     }
 }

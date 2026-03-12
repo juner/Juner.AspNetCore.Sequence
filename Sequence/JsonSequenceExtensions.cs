@@ -20,7 +20,7 @@ public static class JsonSequenceExtensions
                 ? options.OutputFormatters.IndexOf(formatter) : 0;
             options.OutputFormatters.Insert(
                 insert,
-                JsonSequenceOutputFormatter.CreateFormatter(jsonOptions.Value));
+                new JsonSequenceOutputFormatter());
         });
 
         return builder;

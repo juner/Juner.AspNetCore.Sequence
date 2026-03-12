@@ -2,10 +2,13 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using System.Net.Mime;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Juner.AspNetCore.Sequence.Formatters;
 
@@ -17,39 +20,12 @@ public class JsonSequenceOutputFormatter : TextOutputFormatter
     /// <summary>
     /// 
     /// </summary>
-    public JsonSerializerOptions SerializerOptions { get; }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    public JsonSequenceOutputFormatter(JsonSerializerOptions jsonSerializerOptions)
+    public JsonSequenceOutputFormatter()
     {
-        SerializerOptions = jsonSerializerOptions;
-#if NET8_0_OR_GREATER
-        if (!jsonSerializerOptions.IsReadOnly)
-            jsonSerializerOptions.MakeReadOnly();
-#endif
         SupportedMediaTypes.Add(ContentType);
         SupportedEncodings.Add(Encoding.UTF8);
         SupportedEncodings.Add(Encoding.Unicode);
     }
-
-    internal static JsonSequenceOutputFormatter CreateFormatter(JsonOptions jsonOptions)
-    {
-        var jsonSerializerOptions = jsonOptions.JsonSerializerOptions;
-
-        if (jsonSerializerOptions.Encoder is null)
-        {
-            // If the user hasn't explicitly configured the encoder, use the less strict encoder that does not encode all non-ASCII characters.
-            jsonSerializerOptions = new JsonSerializerOptions(jsonSerializerOptions)
-            {
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            };
-        }
-
-        return new JsonSequenceOutputFormatter(jsonSerializerOptions);
-    }
-
 
     const string ContentType =
 #if NET8_0_OR_GREATER
@@ -83,9 +59,12 @@ public class JsonSequenceOutputFormatter : TextOutputFormatter
         ArgumentNullException.ThrowIfNull(selectedEncoding);
 
         var cancellationToken = context.HttpContext.RequestAborted;
-
+        var jsonSerializerOptions = (context.HttpContext.RequestServices.GetService<IOptions<JsonOptions>>()?.Value ?? new JsonOptions()).JsonSerializerOptions;
+#if !NET8_0_OR_GREATER
+        jsonSerializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
+#endif
         await InternalFormatWriter.Create(
-            serializerOptions: SerializerOptions,
+            serializerOptions: jsonSerializerOptions,
             begin: RS,
             end: LF,
             context: context,

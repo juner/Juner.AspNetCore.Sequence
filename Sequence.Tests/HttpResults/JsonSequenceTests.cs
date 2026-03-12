@@ -161,8 +161,8 @@ public class JsonSequenceTests
 	private static ServiceProvider CreateServices()
 	{
 		var services = new ServiceCollection();
-		services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-		return services.BuildServiceProvider();
+        services.AddLogging();
+        return services.BuildServiceProvider();
 	}
 
 	private static void PopulateMetadata<TResult>(MethodInfo method, EndpointBuilder builder)

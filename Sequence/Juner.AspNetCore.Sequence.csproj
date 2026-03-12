@@ -1,10 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <RootNamespace>Juner.AspNetCore.Sequence</RootNamespace>
-    <LangVersion>12</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>

@@ -54,11 +54,11 @@ public class JsonSequenceInputFormatter : TextInputFormatter
             .GetMethod(nameof(ReadAsyncEnumerable), System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .MakeGenericMethod(elementType);
 
-        var result = method.Invoke(this, new object[]
-        {
+        var result = method.Invoke(this,
+        [
             request,
             context.HttpContext.RequestAborted
-        });
+        ]);
 
         return await InputFormatterResult.SuccessAsync(result);
     }
