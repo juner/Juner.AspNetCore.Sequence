@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Logging;
+using System.Threading.Channels;
 
 
 #if NET9_0_OR_GREATER
@@ -46,6 +47,7 @@ internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSeriali
     {
         {typeof(IAsyncEnumerable<>), EnumerableType.AsyncEnumerable},
         {typeof(IEnumerable<>), EnumerableType.Enumerable },
+        {typeof(ChannelReader<>), EnumerableType.ChannelReader },
     }.AsReadOnly();
     public static bool TryGetOutputMode([NotNullWhen(true)] Type? objectType, [NotNullWhen(true)] out EnumerableType outputType, [NotNullWhen(true)] out Type type)
     {
@@ -91,6 +93,7 @@ internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSeriali
           {
               EnumerableType.AsyncEnumerable => WriteAsyncEnumerableMethod,
               EnumerableType.Enumerable => WriteEnumerableMethod,
+              EnumerableType.ChannelReader => WriteChannelReaderMethod,
               _ => throw new InvalidOperationException(),
           } ?? throw new InvalidOperationException();
         method = method.MakeGenericMethod(ObjectType, type);
@@ -104,16 +107,20 @@ internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSeriali
     static MethodInfo? writeEnumerableMethod;
     static MethodInfo WriteEnumerableMethod =>
         writeEnumerableMethod ??= typeof(InternalFormatWriter)
-        .GetMethod(nameof(WriteEnumerableAsync), BindingFlags.Static | BindingFlags.Public)!;
+        .GetMethod(nameof(WriteAsyncFromEnumerable), BindingFlags.Static | BindingFlags.Public)!;
     static MethodInfo? writeAsyncEnumerableMethod;
     static MethodInfo WriteAsyncEnumerableMethod =>
         writeAsyncEnumerableMethod ??= typeof(InternalFormatWriter)
-        .GetMethod(nameof(WriteAsyncEnumerableAsync), BindingFlags.Static | BindingFlags.Public)!;
+        .GetMethod(nameof(WriteAsyncFromAsyncEnumerable), BindingFlags.Static | BindingFlags.Public)!;
+    static MethodInfo? writeCahnnelReaderMethod;
+    static MethodInfo WriteChannelReaderMethod =>
+        writeCahnnelReaderMethod ??= typeof(InternalFormatWriter)
+        .GetMethod(nameof(WriteAsyncFromChannelReader), BindingFlags.Static | BindingFlags.Public)!;
 
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode",
 Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switch, which is set to false by default for trimmed ASP.NET apps, ensures the JsonSerializer doesn't use Reflection.")]
     [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = "See above.")]
-    public static async Task WriteEnumerableAsync<Enumerable, T>(Enumerable values, HttpContext httpContext, JsonTypeInfo<T>? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ILogger logger, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
+    public static async Task WriteAsyncFromEnumerable<Enumerable, T>(Enumerable values, HttpContext httpContext, JsonTypeInfo<T>? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ILogger logger, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
   where Enumerable : IEnumerable<T>
     {
         if (SelectedEncoding.CodePage == Encoding.UTF8.CodePage)
@@ -167,7 +174,7 @@ Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switc
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode",
     Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switch, which is set to false by default for trimmed ASP.NET apps, ensures the JsonSerializer doesn't use Reflection.")]
     [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = "See above.")]
-    public static async Task WriteAsyncEnumerableAsync<AsyncEnumerable, T>(
+    public static async Task WriteAsyncFromAsyncEnumerable<AsyncEnumerable, T>(
         AsyncEnumerable values, HttpContext httpContext, JsonTypeInfo<T>? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ILogger logger, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
       where AsyncEnumerable : IAsyncEnumerable<T>
     {
@@ -218,6 +225,71 @@ Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switc
             }
         }
     }
+    public static async Task WriteAsyncFromChannelReader<ChannelReader, T>(
+        ChannelReader values, HttpContext httpContext, JsonTypeInfo<T>? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ILogger logger, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
+      where ChannelReader : ChannelReader<T>
+    {
+
+        if (SelectedEncoding.CodePage == Encoding.UTF8.CodePage)
+        {
+            try
+            {
+#if NET9_0_OR_GREATER
+                {
+                    var responseWriter = httpContext.Response.BodyWriter;   
+                    while(await values.WaitToReadAsync(cancellationToken))
+                    {                  
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var value = await values.ReadAsync(cancellationToken);
+                        await WriteRecordAsync(responseWriter, value, JsonTypeInfo, SerializerOptions, Begin, End, cancellationToken);
+                    }
+                }
+#else
+                {
+                    var stream = httpContext.Response.Body;
+                    while(await values.WaitToReadAsync(cancellationToken))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var value = await values.ReadAsync(cancellationToken);
+                        await WriteRecordAsync(stream, value, JsonTypeInfo, SerializerOptions, Begin, End);
+                    }
+                }
+#endif
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        }
+        else
+        {
+            var transcodingStream = Encoding.CreateTranscodingStream(httpContext.Response.Body, SelectedEncoding, Encoding.UTF8, leaveOpen: true);
+
+            ExceptionDispatchInfo? exceptionDispatchInfo = null;
+            try
+            {
+                while (await values.WaitToReadAsync(cancellationToken))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var value = await values.ReadAsync(cancellationToken);
+                    await WriteRecordAsync(transcodingStream, value, JsonTypeInfo, SerializerOptions, Begin, End);
+                }
+            }
+            catch (Exception ex)
+            {
+                exceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
+            }
+            finally
+            {
+                try
+                {
+                    await transcodingStream.DisposeAsync();
+                }
+                catch when (exceptionDispatchInfo != null)
+                {
+                }
+                exceptionDispatchInfo?.Throw();
+            }
+        }
+    }
+
 #if NET9_0_OR_GREATER
     static async ValueTask WriteRecordAsync<T>(PipeWriter writer, T value, JsonTypeInfo<T>? jsonTypeInfo, JsonSerializerOptions SerializerOptions, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
     {

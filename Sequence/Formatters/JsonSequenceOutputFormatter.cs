@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using System.Text;
+using System.Text.Json;
+
 #if NET8_0_OR_GREATER
 using System.Net.Mime;
 #else                         
@@ -55,6 +57,25 @@ public partial class JsonSequenceOutputFormatter : TextOutputFormatter
         return accept.Any(v => v.MediaType == ContentType);
     }
 
+    ILogger GetLogger(IServiceProvider provider)
+    {
+        var loggerType = typeof(ILogger<>).MakeGenericType(GetType());
+        var logger = provider.GetService(loggerType) as ILogger;
+        if (logger is not null) return logger;
+        return NullLogger.Instance;
+    }
+    JsonSerializerOptions GetOptions(IServiceProvider provider, ILogger logger)
+    {
+        var jsonOptions = provider.GetService<IOptions<JsonOptions>>()?.Value;
+        if (jsonOptions is null)
+        {
+            Log.LogNotHaveJsonOptions(logger);
+            jsonOptions = new JsonOptions();
+        }
+        return jsonOptions.JsonSerializerOptions;
+
+    }
+
     /// <inheritdoc cref="TextOutputFormatter.WriteResponseBodyAsync(OutputFormatterWriteContext, Encoding)" />
     public sealed override async Task WriteResponseBodyAsync(OutputFormatterWriteContext context, Encoding selectedEncoding)
     {
@@ -62,11 +83,8 @@ public partial class JsonSequenceOutputFormatter : TextOutputFormatter
         ArgumentNullException.ThrowIfNull(selectedEncoding);
 
         var cancellationToken = context.HttpContext.RequestAborted;
-        var logger = context.HttpContext.RequestServices.GetService<ILogger<JsonSequenceOutputFormatter>>() ?? NullLogger<JsonSequenceOutputFormatter>.Instance;
-        var options = context.HttpContext.RequestServices.GetService<IOptions<JsonOptions>>();
-        if (options is null)
-            Log.LogNotHaveJsonOptions(logger);
-        var serializerOptions = (options?.Value ?? new JsonOptions()).JsonSerializerOptions;
+        var logger = GetLogger(context.HttpContext.RequestServices);
+        var serializerOptions = GetOptions(context.HttpContext.RequestServices, logger);
 #if !NET8_0_OR_GREATER
         serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
 #endif

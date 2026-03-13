@@ -17,4 +17,8 @@ public enum EnumerableType
     /// 
     /// </summary>
     Enumerable = 1,
+    /// <summary>
+    /// 
+    /// </summary>
+    ChannelReader = 2,
 }

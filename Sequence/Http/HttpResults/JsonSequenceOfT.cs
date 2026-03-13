@@ -1,12 +1,15 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using Juner.AspNetCore.Sequence.HttpResults;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
 using System.Reflection;
+using System.Threading.Channels;
+
 #if NET8_0_OR_GREATER
 using System.Net.Mime;
 #endif
 
-namespace Juner.AspNetCore.Sequence.HttpResults;
+namespace Juner.AspNetCore.Sequence.Http.HttpResults;
 
 public sealed class JsonSequence<T> : Sequence<T>, IEndpointMetadataProvider
 {
@@ -21,6 +24,8 @@ public sealed class JsonSequence<T> : Sequence<T>, IEndpointMetadataProvider
     /// </summary>
     /// <param name="values"></param>
     internal JsonSequence(IAsyncEnumerable<T> values) : base(values) { }
+
+    internal JsonSequence(ChannelReader<T> values) : base(values) { }
 
     #region RS
     static ReadOnlyMemory<byte>? _rs;

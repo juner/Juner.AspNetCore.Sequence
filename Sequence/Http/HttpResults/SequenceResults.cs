@@ -1,4 +1,4 @@
-﻿namespace Juner.AspNetCore.Sequence.HttpResults;
+﻿namespace Juner.AspNetCore.Sequence.Http.HttpResults;
 
 public static class SequenceResults
 {

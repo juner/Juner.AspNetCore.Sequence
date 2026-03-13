@@ -9,8 +9,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Net.Mime;
 using System.Reflection;
 using System.Text;
+using System.Threading.Channels;
 
-namespace Juner.AspNetCore.Sequence.HttpResults;
+namespace Juner.AspNetCore.Sequence.Http.HttpResults;
 
 [TestClass]
 public class JsonSequenceTests
@@ -31,11 +32,8 @@ public class JsonSequenceTests
 		Assert.AreEqual(StatusCodes.Status200OK, ((IStatusCodeHttpResult)result).StatusCode);
 		Assert.AreEqual("application/json-seq", result.ContentType);
 		string[] expected = ["test1", "test2"];
-		var value = result.Value;
-		var actual = await ToArrayAsync(value, CancellationToken);
+		var actual = await ToArrayAsync(result.ToAsyncEnumerable(CancellationToken), CancellationToken);
 		CollectionAssert.AreEqual(expected, actual);
-		Assert.AreEqual(value, ((IValueHttpResult<IAsyncEnumerable<string>>)result).Value);
-		Assert.AreEqual(value, ((IValueHttpResult)result).Value);
 	}
 
 	[TestMethod]
@@ -53,20 +51,34 @@ public class JsonSequenceTests
 		Assert.AreEqual(statusCode, ((IStatusCodeHttpResult)result).StatusCode);
 		Assert.AreEqual("application/json-seq", result.ContentType);
 		string[] expected = ["test1", "test2"];
-		var value = result.Value;
-		var actual = await ToArrayAsync(value, CancellationToken);
-		CollectionAssert.AreEqual(expected, actual);
-		Assert.AreEqual(value, ((IValueHttpResult<IAsyncEnumerable<string>>)result).Value);
-		Assert.AreEqual(value, ((IValueHttpResult)result).Value);
+        var actual = await ToArrayAsync(result.ToAsyncEnumerable(CancellationToken), CancellationToken);
+        CollectionAssert.AreEqual(expected, actual);
 	}
+    public async Task ChannelReader_StatusCodeAndValueTest()
+    {
+        var channel = Channel.CreateBounded<string>(1);
+        var result = new JsonSequence<string>(channel);
+        var statusCode = result.StatusCode;
+        Assert.AreEqual(StatusCodes.Status200OK, result.StatusCode);
+        Assert.AreEqual(statusCode, ((IStatusCodeHttpResult)result).StatusCode);
+        Assert.AreEqual("application/json-seq", result.ContentType);
+        string[] expected = ["test1", "test2"];
+        var asyncEnumerable = result.ToAsyncEnumerable(CancellationToken);
+
+        _ = channel.Writer.WriteAsync("test1");
+        _ = channel.Writer.WriteAsync("test2");
+        channel.Writer.Complete();
+        var actual = await ToArrayAsync(asyncEnumerable, CancellationToken);
+        CollectionAssert.AreEqual(expected, actual);
+    }
 
 	[TestMethod]
 	public async Task Empty_ValueTest()
 	{
 		IEnumerable<string> v = null!;
 		var result = new JsonSequence<string>(v);
-		var array = await ToArrayAsync(result.Value, CancellationToken);
-		CollectionAssert.AreEqual(Array.Empty<string>(), array);
+        var array = await ToArrayAsync(result.ToAsyncEnumerable(CancellationToken), CancellationToken);
+        CollectionAssert.AreEqual(Array.Empty<string>(), array);
 	}
 
 	[TestMethod]
