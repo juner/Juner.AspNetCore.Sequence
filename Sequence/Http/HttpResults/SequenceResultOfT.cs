@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
-using Juner.AspNetCore.Sequence.Http;
 using System.Text.Json;
 using System.Threading.Channels;
 using System.Diagnostics;
@@ -18,7 +17,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization.Metadata;
 #endif                        
 
-namespace Juner.AspNetCore.Sequence.HttpResults;
+namespace Juner.AspNetCore.Sequence.Http.HttpResults;
 
 [DebuggerDisplay("{Values,nq}")]
 public abstract partial class SequenceResult<T> : IResult, IStatusCodeHttpResult, ISequenceHttpResult, ISequenceHttpResult<T>
