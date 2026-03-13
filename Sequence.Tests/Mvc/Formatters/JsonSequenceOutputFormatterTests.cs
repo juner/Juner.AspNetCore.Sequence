@@ -1,10 +1,7 @@
 ﻿using Juner.AspNetCore.Sequence.Formatters;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;

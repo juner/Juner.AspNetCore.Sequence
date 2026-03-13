@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using System.Net.Mime;
 using System.Reflection;
 using System.Text;
@@ -14,7 +12,7 @@ using System.Threading.Channels;
 namespace Juner.AspNetCore.Sequence.Http.HttpResults;
 
 [TestClass]
-public class JsonSequenceTests
+public class JsonSequenceResultTests
 {
 	public required TestContext TestContext { get; set; }
     CancellationToken CancellationToken =>
@@ -27,7 +25,7 @@ public class JsonSequenceTests
     [TestMethod]
 	public async Task Enumerable_StatusCodeAndValueTest()
 	{
-		var result = new JsonSequence<string>(["test1", "test2"]);
+		var result = new JsonSequenceResult<string>(["test1", "test2"]);
 		Assert.AreEqual(StatusCodes.Status200OK, result.StatusCode);
 		Assert.AreEqual(StatusCodes.Status200OK, ((IStatusCodeHttpResult)result).StatusCode);
 		Assert.AreEqual("application/json-seq", result.ContentType);
@@ -39,7 +37,7 @@ public class JsonSequenceTests
 	[TestMethod]
 	public async Task AsyncEnumerable_StatusCodeAndValueTest()
 	{
-		var result = new JsonSequence<string>(GetValue());
+		var result = new JsonSequenceResult<string>(GetValue());
 		static async IAsyncEnumerable<string> GetValue()
 		{
 			await Task.Yield();
@@ -57,7 +55,7 @@ public class JsonSequenceTests
     public async Task ChannelReader_StatusCodeAndValueTest()
     {
         var channel = Channel.CreateBounded<string>(1);
-        var result = new JsonSequence<string>(channel);
+        var result = new JsonSequenceResult<string>(channel);
         var statusCode = result.StatusCode;
         Assert.AreEqual(StatusCodes.Status200OK, result.StatusCode);
         Assert.AreEqual(statusCode, ((IStatusCodeHttpResult)result).StatusCode);
@@ -76,7 +74,7 @@ public class JsonSequenceTests
 	public async Task Empty_ValueTest()
 	{
 		IEnumerable<string> v = null!;
-		var result = new JsonSequence<string>(v);
+		var result = new JsonSequenceResult<string>(v);
         var array = await ToArrayAsync(result.ToAsyncEnumerable(CancellationToken), CancellationToken);
         CollectionAssert.AreEqual(Array.Empty<string>(), array);
 	}
@@ -84,7 +82,7 @@ public class JsonSequenceTests
 	[TestMethod]
 	public async Task Enumerable_ExecuteAsyncTest()
 	{
-		var result = new JsonSequence<string>(["test1", "test2"]);
+		var result = new JsonSequenceResult<string>(["test1", "test2"]);
 
 		await using var stream = new MemoryStream();
 
@@ -103,7 +101,7 @@ public class JsonSequenceTests
 	[TestMethod]
 	public async Task AsyncEnumerable_ExecuteAsyncTest()
 	{
-		var result = new JsonSequence<string>(GetValue());
+		var result = new JsonSequenceResult<string>(GetValue());
 		static async IAsyncEnumerable<string> GetValue()
 		{
 			await Task.Yield();
@@ -128,7 +126,7 @@ public class JsonSequenceTests
 	public async Task Empty_ExecuteAsyncTest()
 	{
 		IEnumerable<string> v = null!;
-		var result = new JsonSequence<string>(v);
+		var result = new JsonSequenceResult<string>(v);
 
 		await using var stream = new MemoryStream();
 
@@ -148,12 +146,12 @@ public class JsonSequenceTests
 	[TestMethod]
 	public void PopulateMetadataTest()
 	{
-		static JsonSequence<Todo> MyApi() => throw new NotImplementedException();
+		static JsonSequenceResult<Todo> MyApi() => throw new NotImplementedException();
 		var metadata = new List<object>();
 		var builder = new RouteEndpointBuilder(requestDelegate: null, RoutePatternFactory.Parse("/"), order: 0);
 
 		// Act
-		PopulateMetadata<JsonSequence<Todo>>(((Delegate)MyApi).GetMethodInfo(), builder);
+		PopulateMetadata<JsonSequenceResult<Todo>>(((Delegate)MyApi).GetMethodInfo(), builder);
 
 		// Assert
 		var producesResponseTypeMetadata = builder.Metadata.OfType<ProducesResponseTypeMetadata>().Last();

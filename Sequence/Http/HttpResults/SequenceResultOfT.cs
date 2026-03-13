@@ -21,7 +21,7 @@ using System.Text.Json.Serialization.Metadata;
 namespace Juner.AspNetCore.Sequence.HttpResults;
 
 [DebuggerDisplay("{Values,nq}")]
-public abstract partial class Sequence<T> : IResult, IStatusCodeHttpResult, ISequenceHttpResult, ISequenceHttpResult<T>
+public abstract partial class SequenceResult<T> : IResult, IStatusCodeHttpResult, ISequenceHttpResult, ISequenceHttpResult<T>
 {
     readonly object? _values = null;
 
@@ -49,15 +49,15 @@ public abstract partial class Sequence<T> : IResult, IStatusCodeHttpResult, ISeq
     /// 
     /// </summary>
     /// <param name="values"></param>
-    public Sequence(IEnumerable<T> values) => _values = values;
+    public SequenceResult(IEnumerable<T> values) => _values = values;
 
     /// <summary>
     /// 
     /// </summary>
     /// <param name="values"></param>
-    public Sequence(IAsyncEnumerable<T> values) => _values = values;
+    public SequenceResult(IAsyncEnumerable<T> values) => _values = values;
 
-    public Sequence(ChannelReader<T> values) => _values = values;
+    public SequenceResult(ChannelReader<T> values) => _values = values;
 
     protected abstract ReadOnlyMemory<byte> Begin { get; }
 

@@ -11,21 +11,21 @@ using System.Net.Mime;
 
 namespace Juner.AspNetCore.Sequence.Http.HttpResults;
 
-public sealed class JsonSequence<T> : Sequence<T>, IEndpointMetadataProvider
+public sealed class JsonSequenceResult<T> : SequenceResult<T>, IEndpointMetadataProvider
 {
     /// <summary>
     /// 
     /// </summary>
     /// <param name="values"></param>
-    internal JsonSequence(IEnumerable<T> values) :base(values) { }
+    internal JsonSequenceResult(IEnumerable<T> values) :base(values) { }
 
     /// <summary>
     /// 
     /// </summary>
     /// <param name="values"></param>
-    internal JsonSequence(IAsyncEnumerable<T> values) : base(values) { }
+    internal JsonSequenceResult(IAsyncEnumerable<T> values) : base(values) { }
 
-    internal JsonSequence(ChannelReader<T> values) : base(values) { }
+    internal JsonSequenceResult(ChannelReader<T> values) : base(values) { }
 
     #region RS
     static ReadOnlyMemory<byte>? _rs;
