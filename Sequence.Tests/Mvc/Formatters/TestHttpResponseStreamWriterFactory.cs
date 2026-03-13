@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.WebUtilities;
 using System.Text;
 
-namespace Juner.AspNetCore.Sequence.Formatters;
+namespace Juner.AspNetCore.Sequence.Mvc.Formatters;
 
 public class TestHttpResponseStreamWriterFactory : IHttpResponseStreamWriterFactory
 {

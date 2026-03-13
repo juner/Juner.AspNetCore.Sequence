@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Juner.AspNetCore.Sequence.Formatters;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,7 +9,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 
-namespace Juner.AspNetCore.Sequence.Formatters;
+namespace Juner.AspNetCore.Sequence.Mvc.Formatters;
 
 [TestClass]
 public class JsonSequenceOutputFormatterTests
