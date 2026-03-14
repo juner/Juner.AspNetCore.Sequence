@@ -85,7 +85,7 @@ public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
                 "application/json-seq";
 #endif
             yield return (IsJsonSeq, JsonSeq);
-            static bool IsJsonSeq(MediaTypeHeaderValue mediaTypeHeaderValue) => mediaTypeHeaderValue.MediaType.StartsWith(contentType, StringComparison.OrdinalIgnoreCase) == true;
+            static bool IsJsonSeq(MediaTypeHeaderValue mediaTypeHeaderValue) => mediaTypeHeaderValue.MediaType.Equals(contentType, StringComparison.OrdinalIgnoreCase) == true;
             static Sequence<T> JsonSeq(MediaTypeHeaderValue mediaTypeHeaderValue, JsonTypeInfo<T> jsonTypeInfo, HttpRequest request, CancellationToken cancellationToken)
             {
                 if ((mediaTypeHeaderValue.Encoding ?? Encoding.UTF8).CodePage != Encoding.UTF8.CodePage)
@@ -103,15 +103,13 @@ public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
                 // application/x-ndjson support
                 const string contentType = "application/x-ndjson";
                 yield return (IsNdJson, JsonLine);
-                static bool IsNdJson(MediaTypeHeaderValue mediaTypeHeaderValue) => mediaTypeHeaderValue.MediaType.StartsWith(contentType, StringComparison.OrdinalIgnoreCase) == true;
-
-
+                static bool IsNdJson(MediaTypeHeaderValue mediaTypeHeaderValue) => mediaTypeHeaderValue.MediaType.Equals(contentType, StringComparison.OrdinalIgnoreCase) == true;
             }
             {
                 // application/jsonl support
                 const string contentType = "application/jsonl";
                 yield return (IsJsonLine, JsonLine);
-                static bool IsJsonLine(MediaTypeHeaderValue mediaTypeHeaderValue) => mediaTypeHeaderValue.MediaType.StartsWith(contentType, StringComparison.OrdinalIgnoreCase) == true;
+                static bool IsJsonLine(MediaTypeHeaderValue mediaTypeHeaderValue) => mediaTypeHeaderValue.MediaType.Equals(contentType, StringComparison.OrdinalIgnoreCase) == true;
             }
             static Sequence<T> JsonLine(MediaTypeHeaderValue mediaTypeHeaderValue, JsonTypeInfo<T> jsonTypeInfo, HttpRequest request, CancellationToken cancellationToken)
             {
@@ -133,7 +131,7 @@ public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
             const string contentTypeEnd = "+json";
             yield return new(IsJson, Json);
             static bool IsJson(MediaTypeHeaderValue mediaTypeHeaderValue)
-                => mediaTypeHeaderValue.MediaType.StartsWith(contentType, StringComparison.OrdinalIgnoreCase) == true
+                => mediaTypeHeaderValue.MediaType.Equals(contentType, StringComparison.OrdinalIgnoreCase) == true
                     || (
                         mediaTypeHeaderValue.MediaType.StartsWith(contentTypeStart, StringComparison.OrdinalIgnoreCase) == true
                         && mediaTypeHeaderValue.MediaType.EndsWith(contentTypeEnd, StringComparison.OrdinalIgnoreCase) == true
@@ -173,14 +171,20 @@ public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
          ReadOnlyMemory<byte>[] end,
          [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        TryReadFrame tryReadFrame = (start, end) switch
+        {
+            ({ Length: 0 }, [{ Length: 1 }]) => TryReadFrameEndByteOnly,
+            ([{ Length: 1 }], [{ Length: 1 }]) => TryReadFrameStartEndByteOnly,
+            _ => TryReadFrameAny,
+        };
         while (true)
         {
             var result = await reader.ReadAsync(cancellationToken);
             var buffer = result.Buffer;
 
-            while (TryReadFrame(ref buffer, start, end, out var frame))
+            while (tryReadFrame(ref buffer, start, end, out var frame))
             {
-                var jsonReader = new Utf8JsonReader(frame);
+                Utf8JsonReader jsonReader = frame is {IsSingleSegment:true } ? new(frame.FirstSpan) : new(frame);
 
                 var value = JsonSerializer.Deserialize(ref jsonReader, jsonTypeInfo);
 
@@ -210,8 +214,53 @@ public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
             reader.AdvanceTo(buffer.Start, buffer.End);
         }
     }
+    delegate bool TryReadFrame(
+        ref ReadOnlySequence<byte> buffer,
+        ReadOnlyMemory<byte>[] start,
+        ReadOnlyMemory<byte>[] end,
+        out ReadOnlySequence<byte> frame);
 
-    static bool TryReadFrame(
+    static bool TryReadFrameEndByteOnly(
+        ref ReadOnlySequence<byte> buffer,
+        ReadOnlyMemory<byte>[] start,
+        ReadOnlyMemory<byte>[] end,
+        out ReadOnlySequence<byte> frame)
+    {
+        var e = end[0].Span[0];
+        var reader = new SequenceReader<byte>(buffer);
+
+        if (!reader.TryReadTo(out frame, e))
+            return false;
+
+        buffer = buffer.Slice(reader.Position);
+
+        return true;
+    }
+
+    static bool TryReadFrameStartEndByteOnly(
+         ref ReadOnlySequence<byte> buffer,
+         ReadOnlyMemory<byte>[] start,
+         ReadOnlyMemory<byte>[] end,
+         out ReadOnlySequence<byte> frame)
+    {
+        frame = default;
+        var s = start[0].Span[0];
+        var e = end[0].Span[0];
+
+        var reader = new SequenceReader<byte>(buffer);
+
+        if (!reader.IsNext(s, advancePast: true))
+            return false;
+
+        if (!reader.TryReadTo(out frame, e))
+            return false;
+
+        buffer = buffer.Slice(reader.Position);
+
+        return true;
+    }
+
+    static bool TryReadFrameAny(
          ref ReadOnlySequence<byte> buffer,
          ReadOnlyMemory<byte>[] start,
          ReadOnlyMemory<byte>[] end,
