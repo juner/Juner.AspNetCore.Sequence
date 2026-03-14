@@ -10,7 +10,7 @@ using System.Net.Mime;
 
 namespace Juner.AspNetCore.Sequence.Http.HttpResults;
 
-public sealed class JsonSequenceResult<T> : SequenceResult<T>, IEndpointMetadataProvider
+public sealed class JsonSequenceResult<T> : SequenceResultBase<T>, IEndpointMetadataProvider
 {
     /// <summary>
     /// 
