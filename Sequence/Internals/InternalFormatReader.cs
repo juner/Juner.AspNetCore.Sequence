@@ -1,8 +1,6 @@
 ﻿using System.Buffers;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.IO.Pipelines;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
@@ -12,7 +10,7 @@ namespace Juner.AspNetCore.Sequence.Internals;
 
 internal class InternalFormatReader
 {
-        public static object GetResult<T>(
+        public static object ReadResult<T>(
             EnumerableType enumerableType,
             PipeReader reader,
             JsonTypeInfo jsonTypeInfo,
@@ -32,7 +30,7 @@ internal class InternalFormatReader
             };
         }
 
-        public static object GetResult(
+        public static object ReadResult(
             Type elementType,
             EnumerableType enumerableType,
             PipeReader reader,
@@ -70,7 +68,7 @@ internal class InternalFormatReader
             var method =
                 typeof(InternalFormatReader)
                 .GetMethods()
-                .First(v => v is {Name: nameof(GetResult), IsGenericMethod: true })
+                .First(v => v is {Name: nameof(ReadResult), IsGenericMethod: true })
                 .MakeGenericMethod(elementType);
 
             return method.CreateDelegate(

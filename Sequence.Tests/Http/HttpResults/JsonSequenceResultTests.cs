@@ -4,10 +4,12 @@ using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.Extensions.DependencyInjection;
-using System.Net.Mime;
 using System.Reflection;
 using System.Text;
 using System.Threading.Channels;
+#if NET9_0_OR_GREATER
+using System.Net.Mime;
+#endif
 
 namespace Juner.AspNetCore.Sequence.Http.HttpResults;
 

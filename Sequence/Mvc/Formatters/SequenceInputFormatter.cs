@@ -104,7 +104,7 @@ public partial class SequenceInputFormatter : TextInputFormatter
 
         var jsonTypeInfo = serializerOptions.GetTypeInfo(elementType);
 
-        var result = InternalFormatReader.GetResult(
+        var result = InternalFormatReader.ReadResult(
             elementType,
             enumerableType,
             request.BodyReader,
