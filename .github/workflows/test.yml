@@ -1,0 +1,52 @@
+name: .NET Test
+
+on:
+  push:
+    branches:
+      - main
+      - 'develop/**'
+    paths:
+      - '**.cs'
+      - '**.yml'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup .NET 10.x
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+        working-directory: ./
+
+      - name: Build
+        run: dotnet build --no-restore
+        working-directory: ./
+
+      - name: Run MSTest tests (net8.0)
+        run: dotnet test --no-build -f net8.0  --logger:"trx;LogFilePrefix=test_result"
+        working-directory: ./
+  
+      - name: Run MSTest tests (net9.0)
+        run: dotnet test --no-build -f net9.0  --logger:"trx;LogFilePrefix=test_result"
+        working-directory: ./
+
+      - name: Run MSTest tests (net10.0)
+        run: dotnet test --no-build -f net10.0  --logger:"trx;LogFilePrefix=test_result"
+        working-directory: ./
+
+      - name: Publish test results as GitHub report
+        uses: EnricoMi/publish-unit-test-result-action/linux@v2
+        if: (!cancelled())
+        with:
+          files: ./**/TestResults/test_result_*.trx
