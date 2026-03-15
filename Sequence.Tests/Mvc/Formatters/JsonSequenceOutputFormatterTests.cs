@@ -1,10 +1,10 @@
-﻿using Juner.AspNetCore.Sequence.Formatters;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using OutputFormatter = Juner.AspNetCore.Sequence.Mvc.Formatters.JsonSequenceOutputFormatter;
 
 namespace Juner.AspNetCore.Sequence.Mvc.Formatters;
 
@@ -42,7 +42,7 @@ public class JsonSequenceOutputFormatterTests
         }
         var serializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
-        var formatter = new JsonSequenceOutputFormatter();
+        var formatter = new OutputFormatter();
         var actual = formatter.CanWriteResult(context);
         Assert.AreEqual(expect, actual);
 
@@ -105,7 +105,7 @@ public class JsonSequenceOutputFormatterTests
             var httpContext = MakeHttpContext(accept, acceptEncoding);
             context = new OutputFormatterWriteContext(httpContext, writerFactory, objectType, @object);
         }
-        var formatter = new JsonSequenceOutputFormatter();
+        var formatter = new OutputFormatter();
         using var stream = new MemoryStream();
         context.HttpContext.Response.Body = stream;
         await formatter.WriteAsync(context);

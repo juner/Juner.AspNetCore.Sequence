@@ -1,4 +1,5 @@
-﻿using Juner.AspNetCore.Sequence.Http;
+﻿using Juner.AspNetCore.Sequence;
+using Juner.AspNetCore.Sequence.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using System.Linq.Expressions;
@@ -11,6 +12,13 @@ namespace Juner.AspNetCore.Http;
 [TestClass]
 public class SequenceTests
 {
+    public required TestContext TestContext { get; set; }
+    CancellationToken CancellationToken =>
+#if NET8_0_OR_GREATER
+        TestContext.CancellationToken;
+#else
+        TestContext.CancellationTokenSource.Token;
+#endif
     record Person(string Name, int Age);
 
     static DefaultHttpContext CreateContext(string contentType, string body)
@@ -161,5 +169,36 @@ public class SequenceTests
         var service = new ServiceCollection();
         return service.BuildServiceProvider();
 
+    }
+
+    [TestMethod]
+    public async Task NDJSON_StreamChunked()
+    {
+        var body =
+            "{\"Name\":\"Alice\",\"Age\":30}\n" +
+            "{\"Name\":\"Bob\",\"Age\":25}\n";
+
+        var ctx = CreateChunkContext("application/x-ndjson", body);
+        var parameter = new MockParameterInfo(typeof(Sequence<Person>), "persons");
+        var seq = await CallBindAsync<Person>(ctx, parameter);
+
+        var list = await ReadAll(seq!);
+
+        Assert.HasCount(2, list);
+        Assert.AreEqual("Alice", list[0].Name);
+        Assert.AreEqual("Bob", list[1].Name);
+    }
+
+    static DefaultHttpContext CreateChunkContext(string contentType, string body)
+    {
+        var context = new DefaultHttpContext();
+
+        var bytes = Encoding.UTF8.GetBytes(body);
+
+        context.Request.ContentType = contentType;
+        context.Request.Body = new ChunkStream(bytes, 1);
+        context.RequestServices = GetServices();
+
+        return context;
     }
 }

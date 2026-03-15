@@ -1,11 +1,10 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Juner.AspNetCore.Sequence.Internals;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using System.Buffers;
-using System.IO.Pipelines;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -47,8 +46,10 @@ public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
 #endif
         var cancellationToken = context.RequestAborted;
         var request = context.Request;
-        var mediaTypeHeaderValue = MediaTypeHeaderValue.Parse(request.ContentType);
 
+        if (string.IsNullOrEmpty(request.ContentType) || !MediaTypeHeaderValue.TryParse(request.ContentType, out var mediaTypeHeaderValue))
+            throw new ArgumentException("required context.Request.ContentType is parsable.");
+        
         var jsonTypeInfo = (JsonTypeInfo<T>)serializerOptions.GetTypeInfo(typeof(T));
 
         foreach (var (match, func) in MakePatternActionList)
@@ -72,10 +73,16 @@ public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
 
     #endregion
 
-    static (Func<MediaTypeHeaderValue, bool>, Func<MediaTypeHeaderValue, JsonTypeInfo<T>, HttpRequest, CancellationToken, Sequence<T>>)[]? _makePatternActionList = null;
-    static (Func<MediaTypeHeaderValue, bool>, Func<MediaTypeHeaderValue, JsonTypeInfo<T>, HttpRequest, CancellationToken, Sequence<T>>)[] MakePatternActionList => _makePatternActionList ??= [.. MakePatternActions()];
+    static PatternAction[]? _makePatternActionList = null;
+    static PatternAction[] MakePatternActionList => _makePatternActionList ??= [.. MakePatternActions()];
 
-    static IEnumerable<(Func<MediaTypeHeaderValue, bool>, Func<MediaTypeHeaderValue, JsonTypeInfo<T>, HttpRequest, CancellationToken, Sequence<T>>)> MakePatternActions()
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="Match"></param>
+    /// <param name="Action"></param>
+    record struct PatternAction(Func<MediaTypeHeaderValue, bool> Match, Func<MediaTypeHeaderValue, JsonTypeInfo<T>, HttpRequest, CancellationToken, Sequence<T>> Action);
+    static IEnumerable<PatternAction> MakePatternActions()
     {
         {
             const string contentType =
@@ -84,13 +91,13 @@ public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
 #else
                 "application/json-seq";
 #endif
-            yield return (IsJsonSeq, JsonSeq);
+            yield return new(IsJsonSeq, JsonSeq);
             static bool IsJsonSeq(MediaTypeHeaderValue mediaTypeHeaderValue) => mediaTypeHeaderValue.MediaType.Equals(contentType, StringComparison.OrdinalIgnoreCase) == true;
             static Sequence<T> JsonSeq(MediaTypeHeaderValue mediaTypeHeaderValue, JsonTypeInfo<T> jsonTypeInfo, HttpRequest request, CancellationToken cancellationToken)
             {
                 if ((mediaTypeHeaderValue.Encoding ?? Encoding.UTF8).CodePage != Encoding.UTF8.CodePage)
                     throw new NotSupportedException($"{mediaTypeHeaderValue.MediaType} is not support charset");
-                return new Sequence<T>(GetAsyncEnumerable(
+                return new Sequence<T>(InternalFormatReader.GetAsyncEnumerable(
                     request.BodyReader,
                     jsonTypeInfo,
                     JSONSEQ_START,
@@ -102,13 +109,13 @@ public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
             {
                 // application/x-ndjson support
                 const string contentType = "application/x-ndjson";
-                yield return (IsNdJson, JsonLine);
+                yield return new (IsNdJson, JsonLine);
                 static bool IsNdJson(MediaTypeHeaderValue mediaTypeHeaderValue) => mediaTypeHeaderValue.MediaType.Equals(contentType, StringComparison.OrdinalIgnoreCase) == true;
             }
             {
                 // application/jsonl support
                 const string contentType = "application/jsonl";
-                yield return (IsJsonLine, JsonLine);
+                yield return new(IsJsonLine, JsonLine);
                 static bool IsJsonLine(MediaTypeHeaderValue mediaTypeHeaderValue) => mediaTypeHeaderValue.MediaType.Equals(contentType, StringComparison.OrdinalIgnoreCase) == true;
             }
             static Sequence<T> JsonLine(MediaTypeHeaderValue mediaTypeHeaderValue, JsonTypeInfo<T> jsonTypeInfo, HttpRequest request, CancellationToken cancellationToken)
@@ -116,7 +123,7 @@ public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
                 if ((mediaTypeHeaderValue.Encoding ?? Encoding.UTF8).CodePage != Encoding.UTF8.CodePage)
                     throw new NotSupportedException($"{mediaTypeHeaderValue.MediaType} is not support charset");
 
-                return new(GetAsyncEnumerable(
+                return new(InternalFormatReader.GetAsyncEnumerable(
                     request.BodyReader,
                     jsonTypeInfo,
                     NDJSON_START,
@@ -164,192 +171,5 @@ public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
                 yield return item;
         }
     }
-    static async IAsyncEnumerable<T> GetAsyncEnumerable(
-         PipeReader reader,
-         JsonTypeInfo<T> jsonTypeInfo,
-         ReadOnlyMemory<byte>[] start,
-         ReadOnlyMemory<byte>[] end,
-         [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        TryReadFrame tryReadFrame = (start, end) switch
-        {
-            ({ Length: 0 }, [{ Length: 1 }]) => TryReadFrameEndByteOnly,
-            ([{ Length: 1 }], [{ Length: 1 }]) => TryReadFrameStartEndByteOnly,
-            _ => TryReadFrameAny,
-        };
-        while (true)
-        {
-            var result = await reader.ReadAsync(cancellationToken);
-            var buffer = result.Buffer;
-
-            while (tryReadFrame(ref buffer, start, end, out var frame))
-            {
-                Utf8JsonReader jsonReader = frame is {IsSingleSegment:true } ? new(frame.FirstSpan) : new(frame);
-
-                var value = JsonSerializer.Deserialize(ref jsonReader, jsonTypeInfo);
-
-                if (value is not null)
-                    yield return value;
-            }
-
-            if (result.IsCompleted)
-            {
-                if (!buffer.IsEmpty)
-                {
-                    if (TryReadLastFrame(ref buffer, start, out var frame))
-                    {
-                        var jsonReader = new Utf8JsonReader(frame);
-
-                        var value = JsonSerializer.Deserialize(ref jsonReader, jsonTypeInfo);
-
-                        if (value is not null)
-                            yield return value;
-                    }
-                }
-
-                reader.AdvanceTo(buffer.End);
-                yield break;
-            }
-
-            reader.AdvanceTo(buffer.Start, buffer.End);
-        }
-    }
-    delegate bool TryReadFrame(
-        ref ReadOnlySequence<byte> buffer,
-        ReadOnlyMemory<byte>[] start,
-        ReadOnlyMemory<byte>[] end,
-        out ReadOnlySequence<byte> frame);
-
-    static bool TryReadFrameEndByteOnly(
-        ref ReadOnlySequence<byte> buffer,
-        ReadOnlyMemory<byte>[] start,
-        ReadOnlyMemory<byte>[] end,
-        out ReadOnlySequence<byte> frame)
-    {
-        var e = end[0].Span[0];
-        var reader = new SequenceReader<byte>(buffer);
-
-        if (!reader.TryReadTo(out frame, e))
-            return false;
-
-        buffer = buffer.Slice(reader.Position);
-
-        return true;
-    }
-
-    static bool TryReadFrameStartEndByteOnly(
-         ref ReadOnlySequence<byte> buffer,
-         ReadOnlyMemory<byte>[] start,
-         ReadOnlyMemory<byte>[] end,
-         out ReadOnlySequence<byte> frame)
-    {
-        frame = default;
-        var s = start[0].Span[0];
-        var e = end[0].Span[0];
-
-        var reader = new SequenceReader<byte>(buffer);
-
-        if (!reader.IsNext(s, advancePast: true))
-            return false;
-
-        if (!reader.TryReadTo(out frame, e))
-            return false;
-
-        buffer = buffer.Slice(reader.Position);
-
-        return true;
-    }
-
-    static bool TryReadFrameAny(
-         ref ReadOnlySequence<byte> buffer,
-         ReadOnlyMemory<byte>[] start,
-         ReadOnlyMemory<byte>[] end,
-         out ReadOnlySequence<byte> frame)
-    {
-        frame = default;
-
-        var reader = new SequenceReader<byte>(buffer);
-
-        if (!MatchStart(ref reader, start))
-            return false;
-
-        if (!TryReadToAny(ref reader, end, out frame))
-            return false;
-
-        buffer = buffer.Slice(reader.Position);
-
-        return true;
-    }
-
-    static bool MatchStart(ref SequenceReader<byte> reader, ReadOnlyMemory<byte>[] start)
-    {
-        if (start.Length == 0)
-            return true;
-
-        foreach (var s in start)
-        {
-            if (reader.IsNext(s.Span, advancePast: true))
-                return true;
-        }
-
-        return false;
-    }
-
-    static bool TryReadToAny(
-        ref SequenceReader<byte> reader,
-        ReadOnlyMemory<byte>[] delimiters,
-        out ReadOnlySequence<byte> frame)
-    {
-        frame = default;
-
-        if (delimiters.Length == 0)
-            return false;
-
-        Span<byte> firstBytes = stackalloc byte[delimiters.Length];
-
-        for (var i = 0; i < delimiters.Length; i++)
-            firstBytes[i] = delimiters[i].Span[0];
-
-        var start = reader.Position;
-
-        while (reader.TryAdvanceToAny(firstBytes, advancePastDelimiter: false))
-        {
-            var pos = reader.Position;
-
-            foreach (var d in delimiters)
-            {
-                if (reader.IsNext(d.Span, advancePast: true))
-                {
-                    frame = reader.Sequence.Slice(start, pos);
-                    return true;
-                }
-            }
-
-            reader.Advance(1);
-        }
-
-        return false;
-    }
-
-    static bool TryReadLastFrame(
-        ref ReadOnlySequence<byte> buffer,
-        ReadOnlyMemory<byte>[] start,
-        out ReadOnlySequence<byte> frame)
-    {
-        var reader = new SequenceReader<byte>(buffer);
-
-        if (!MatchStart(ref reader, start))
-        {
-            frame = default;
-            return false;
-        }
-
-        frame = buffer.Slice(reader.Position);
-
-        buffer = buffer.Slice(buffer.End);
-
-        return true;
-    }
-
     #endregion
 }

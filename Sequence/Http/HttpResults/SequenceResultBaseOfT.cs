@@ -11,8 +11,6 @@ using System.Threading.Channels;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-
-
 #if !NET8_0_OR_GREATER
 using System.Text.Json.Serialization.Metadata;
 #endif                        

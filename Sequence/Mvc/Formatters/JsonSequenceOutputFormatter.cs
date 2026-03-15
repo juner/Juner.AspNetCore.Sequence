@@ -15,7 +15,7 @@ using System.Net.Mime;
 using System.Text.Json.Serialization.Metadata;
 #endif
 
-namespace Juner.AspNetCore.Sequence.Formatters;
+namespace Juner.AspNetCore.Sequence.Mvc.Formatters;
 
 /// <summary>
 /// application/json-seq 対応の フォーマッター

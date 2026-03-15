@@ -1,37 +1,46 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Juner.AspNetCore.Sequence.Internals;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
+using Microsoft.Net.Http.Headers;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+
+#if !NET8_0_OR_GREATER
+using System.Text.Json.Serialization.Metadata;
+#endif                        
 
 namespace Juner.AspNetCore.Sequence.Mvc.Formatters;
 
 public partial class SequenceInputFormatter : TextInputFormatter
 {
-    public JsonSerializerOptions SerializerOptions { get; }
 
-    const string ContentType =
+    const string ContentTypeJsonSequence =
 #if NET8_0_OR_GREATER
         System.Net.Mime.MediaTypeNames.Application.JsonSequence;
 #else
         "application/json-seq";
 #endif
+    const string ContentTypeNdJson =
+        "application/x-ndjson";
+    const string ContentTypeJsonLine =
+        "application/jsonl";
 
-    public SequenceInputFormatter(JsonSerializerOptions options)
+    public SequenceInputFormatter()
     {
-        SerializerOptions = options;
-
-        SupportedMediaTypes.Add(ContentType);
+        SupportedMediaTypes.Add(ContentTypeJsonSequence);
+        SupportedMediaTypes.Add(ContentTypeNdJson);
+        SupportedMediaTypes.Add(ContentTypeJsonLine);
         SupportedEncodings.Add(Encoding.UTF8);
         SupportedEncodings.Add(Encoding.Unicode);
     }
+
 
     protected override bool CanReadType(Type type)
         => TryGetElementType(type, out _, out _);
@@ -43,9 +52,14 @@ public partial class SequenceInputFormatter : TextInputFormatter
 
         if (!TryGetElementType(context.ModelType, out _,  out _))
             return false;
-
+        if (!MediaTypeHeaderValue.TryParse(context.HttpContext.Request.ContentType!, out var parsedValue))
+            return false;
+        var mediaType = parsedValue.MediaType;
+        if (!TryGetSequenceType(mediaType, out _, out _))
+            return false;
         return true;
     }
+
     ILogger GetLogger(IServiceProvider provider)
     {
         var loggerType = typeof(ILogger<>).MakeGenericType(GetType());
@@ -72,50 +86,60 @@ public partial class SequenceInputFormatter : TextInputFormatter
         var cancellationToken = context.HttpContext.RequestAborted;
         var httpContext = context.HttpContext;
         var logger = GetLogger(httpContext.RequestServices);
-        var jsonSerializerOptions = GetOptions(httpContext.RequestServices, logger);
+        var serializerOptions = GetOptions(httpContext.RequestServices, logger);
+#if !NET8_0_OR_GREATER
+        serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
+#endif
 
         if (!TryGetElementType(context.ModelType, out var enumerableType, out var elementType))
             return await InputFormatterResult.FailureAsync();
 
-        var method = GetType()
-            .GetMethod(nameof(ReadAsyncEnumerable), System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .MakeGenericMethod(elementType);
 
-        var result = method.Invoke(this,
-        [
-            request,
-            context.HttpContext.RequestAborted
-        ]);
-        if (result is Task taskResult)
-            return await InputFormatterResult.SuccessAsync(await (Task<object>)taskResult);
+        if (string.IsNullOrEmpty(context.HttpContext.Request.ContentType) || !MediaTypeHeaderValue.TryParse(context.HttpContext.Request.ContentType, out var parsedValue))
+            return await InputFormatterResult.FailureAsync();
+
+        var mediaType = parsedValue.MediaType; 
+        if (!TryGetSequenceType(mediaType, out var start, out var end))
+            return await InputFormatterResult.FailureAsync();
+
+        var jsonTypeInfo = serializerOptions.GetTypeInfo(elementType);
+
+        var result = InternalFormatReader.GetResult(
+            enumerableType,
+            elementType,
+            request.BodyReader,
+            jsonTypeInfo,
+            start,
+            end,
+            cancellationToken);
+
+        if (result is Task task)
+        {
+            await task.ConfigureAwait(false);
+            result = task.GetType().GetProperty("Result")!.GetValue(task);
+        }
 
         return await InputFormatterResult.SuccessAsync(result);
     }
 
-    async IAsyncEnumerable<T> ReadAsyncEnumerable<T>(
-        HttpRequest request,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+    static bool TryGetSequenceType(StringSegment mediaType, [NotNullWhen(true)] out ReadOnlyMemory<byte>[] start, [NotNullWhen(true)] out ReadOnlyMemory<byte>[] end)
     {
-        using var reader = new StreamReader(request.Body);
-
-        int prefix;
-        while ((prefix = reader.Read()) >= 0)
+        start = default!;
+        end = default!;
+        if (mediaType.Equals(ContentTypeJsonSequence, StringComparison.OrdinalIgnoreCase))
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (prefix != 0x1E) // RS
-                continue;
-
-            var json = await reader.ReadLineAsync(cancellationToken);
-
-            if (string.IsNullOrWhiteSpace(json))
-                continue;
-
-            var value = JsonSerializer.Deserialize<T>(json, SerializerOptions);
-
-            if (value != null)
-                yield return value;
+            start = JSONSEQ_START;
+            end = JSONSEQ_END;
+            return true;
         }
+        if (mediaType.Equals(ContentTypeNdJson, StringComparison.OrdinalIgnoreCase)
+            || mediaType.Equals(ContentTypeJsonLine, StringComparison.OrdinalIgnoreCase))
+        {
+            start = NDJSON_START;
+            end = NDJSON_END;
+            return true;
+        }
+        return false;
     }
 
     static bool TryGetElementType(Type type,out EnumerableType enumerableType, [NotNullWhen(true)] out Type? elementType)
@@ -151,6 +175,20 @@ public partial class SequenceInputFormatter : TextInputFormatter
 
         return false;
     }
+
+    #region delimiters
+
+    static readonly byte[] RS = [.. "\u001e"u8];
+    static readonly byte[] LF = [.. "\n"u8];
+
+    static readonly ReadOnlyMemory<byte>[] JSONSEQ_START = [RS];
+    static readonly ReadOnlyMemory<byte>[] JSONSEQ_END = [LF];
+
+    static readonly ReadOnlyMemory<byte>[] NDJSON_START = [];
+    static readonly ReadOnlyMemory<byte>[] NDJSON_END = [LF];
+
+    #endregion
+
     static partial class Log
     {
         [LoggerMessage(
