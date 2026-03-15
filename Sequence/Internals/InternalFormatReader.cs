@@ -1,4 +1,6 @@
 ﻿using System.Buffers;
+using System.Collections;
+using System.Collections.Concurrent;
 using System.IO.Pipelines;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -10,54 +12,82 @@ namespace Juner.AspNetCore.Sequence.Internals;
 
 internal class InternalFormatReader
 {
-    public static object? GetResult(
-        EnumerableType enumerableType,
-        Type elementType,
-        PipeReader reader,
-        JsonTypeInfo jsonTypeInfo,
-        ReadOnlyMemory<byte>[] start,
-        ReadOnlyMemory<byte>[] end,
-        CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(elementType);
-        var method = enumerableType switch
+        public static object GetResult<T>(
+            EnumerableType enumerableType,
+            PipeReader reader,
+            JsonTypeInfo jsonTypeInfo,
+            ReadOnlyMemory<byte>[] start,
+            ReadOnlyMemory<byte>[] end,
+            CancellationToken cancellationToken)
         {
-            EnumerableType.Enumerable => GetEnumerableAsyncMethod,
-            EnumerableType.Array => GetArrayAsyncMethod,
-            EnumerableType.List => GetListAsyncMethod,
-            EnumerableType.ChannelReader => GetChannelReaderMethod,
-            _ => throw new NotSupportedException($"type:{enumerableType} is not support"),
-        };
-        method = method.MakeGenericMethod(elementType);
+            var asyncEnumerable = GetAsyncEnumerable(reader, (JsonTypeInfo<T>)jsonTypeInfo, start, end, cancellationToken);
+            return enumerableType switch
+            {
+                EnumerableType.AsyncEnumerable => asyncEnumerable,
+                EnumerableType.Enumerable => GetEnumerableAsync(asyncEnumerable, cancellationToken),
+                EnumerableType.Array => GetArrayAsync(asyncEnumerable, cancellationToken),
+                EnumerableType.List => GetListAsync(asyncEnumerable, cancellationToken),
+                EnumerableType.ChannelReader => GetChannelReader(asyncEnumerable, cancellationToken),
+                _ => throw new NotSupportedException($"type:{enumerableType} is not support"),
+            };
+        }
 
-        return method.Invoke(null, [
-            reader,
-            jsonTypeInfo,
-            start,
-            end,
-            cancellationToken
-        ]);
-    }
+        public static object GetResult(
+            Type elementType,
+            EnumerableType enumerableType,
+            PipeReader reader,
+            JsonTypeInfo jsonTypeInfo,
+            ReadOnlyMemory<byte>[] start,
+            ReadOnlyMemory<byte>[] end,
+            CancellationToken cancellationToken
+        )
+        {
+            var del = cache.GetOrAdd(elementType, CreateDelegate);
 
-    static readonly MethodInfo GetEnumerableAsyncMethod = typeof(InternalFormatReader).GetMethod(nameof(GetEnumerableAsync))!;
-    static readonly MethodInfo GetArrayAsyncMethod = typeof(InternalFormatReader).GetMethod(nameof(GetArrayAsync))!;
-    static readonly MethodInfo GetListAsyncMethod = typeof(InternalFormatReader).GetMethod(nameof(GetListAsync))!;
-    static readonly MethodInfo GetChannelReaderMethod = typeof(InternalFormatReader).GetMethod(nameof(GetChannelReader))!;
+            var func =
+                (Func<
+                    EnumerableType,
+                    PipeReader,
+                    JsonTypeInfo,
+                    ReadOnlyMemory<byte>[],
+                    ReadOnlyMemory<byte>[],
+                    CancellationToken,
+                    object>)del;
+
+            return func(
+                enumerableType,
+                reader,
+                jsonTypeInfo,
+                start,
+                end,
+                cancellationToken);
+        }
+
+        static readonly ConcurrentDictionary<Type, Delegate> cache = new();
+
+        static Delegate CreateDelegate(Type elementType)
+        {
+            var method =
+                typeof(InternalFormatReader)
+                .GetMethods()
+                .First(v => v is {Name: nameof(GetResult), IsGenericMethod: true })
+                .MakeGenericMethod(elementType);
+
+            return method.CreateDelegate(
+                typeof(Func<
+                    EnumerableType,
+                    PipeReader,
+                    JsonTypeInfo,
+                    ReadOnlyMemory<byte>[],
+                    ReadOnlyMemory<byte>[],
+                    CancellationToken,
+                    object>));
+        }
 
     public static async Task<IEnumerable<T>> GetEnumerableAsync<T>(
-        PipeReader reader,
-        JsonTypeInfo<T> jsonTypeInfo,
-        ReadOnlyMemory<byte>[] start,
-        ReadOnlyMemory<byte>[] end,
+        IAsyncEnumerable<T> asyncEnumerable,
         CancellationToken cancellationToken)
     {
-        var asyncEnumerable = GetAsyncEnumerable(
-            reader,
-            jsonTypeInfo,
-            start,
-            end,
-            cancellationToken
-        );
 #if NET10_0_OR_GREATER
         return await asyncEnumerable.ToListAsync(cancellationToken);
 #else
@@ -69,19 +99,9 @@ internal class InternalFormatReader
     }
 
     public static async Task<List<T>> GetListAsync<T>(
-        PipeReader reader,
-        JsonTypeInfo<T> jsonTypeInfo,
-        ReadOnlyMemory<byte>[] start,
-        ReadOnlyMemory<byte>[] end,
+        IAsyncEnumerable<T> asyncEnumerable,
         CancellationToken cancellationToken)
     {
-        var asyncEnumerable = GetAsyncEnumerable(
-            reader,
-            jsonTypeInfo,
-            start,
-            end,
-            cancellationToken
-        );
 #if NET10_0_OR_GREATER
         return await asyncEnumerable.ToListAsync(cancellationToken);
 #else
@@ -93,19 +113,9 @@ internal class InternalFormatReader
     }
 
     public static async Task<T[]> GetArrayAsync<T>(
-        PipeReader reader,
-        JsonTypeInfo<T> jsonTypeInfo,
-        ReadOnlyMemory<byte>[] start,
-        ReadOnlyMemory<byte>[] end,
+        IAsyncEnumerable<T> asyncEnumerable,
         CancellationToken cancellationToken)
     {
-        var asyncEnumerable = GetAsyncEnumerable(
-            reader,
-            jsonTypeInfo,
-            start,
-            end,
-            cancellationToken
-        );
 #if NET10_0_OR_GREATER
         return await asyncEnumerable.ToArrayAsync(cancellationToken);
 #else
@@ -304,10 +314,7 @@ internal class InternalFormatReader
     }
 
     public static async Task<ChannelReader<T>> GetChannelReader<T>(
-        PipeReader reader,
-        JsonTypeInfo<T> jsonTypeInfo,
-        ReadOnlyMemory<byte>[] start,
-        ReadOnlyMemory<byte>[] end,
+        IAsyncEnumerable<T> asyncEnumerable,
         CancellationToken cancellationToken)
     {
         var channel = Channel.CreateUnbounded<T>();
@@ -317,12 +324,7 @@ internal class InternalFormatReader
             Exception? error = null;
             try
             {
-                await foreach (var item in GetAsyncEnumerable(
-                    reader,
-                    jsonTypeInfo,
-                    start,
-                    end,
-                    cancellationToken).WithCancellation(cancellationToken))
+                await foreach (var item in asyncEnumerable.WithCancellation(cancellationToken))
                     await channel.Writer.WriteAsync(item);
             }
             catch(Exception error2)

@@ -7,14 +7,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.IO.Pipelines;
+using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Channels;
-
-#if !NET8_0_OR_GREATER
 using System.Text.Json.Serialization.Metadata;
-#endif                        
+using System.Threading.Channels;
 
 namespace Juner.AspNetCore.Sequence.Mvc.Formatters;
 
@@ -105,8 +105,8 @@ public partial class SequenceInputFormatter : TextInputFormatter
         var jsonTypeInfo = serializerOptions.GetTypeInfo(elementType);
 
         var result = InternalFormatReader.GetResult(
-            enumerableType,
             elementType,
+            enumerableType,
             request.BodyReader,
             jsonTypeInfo,
             start,
