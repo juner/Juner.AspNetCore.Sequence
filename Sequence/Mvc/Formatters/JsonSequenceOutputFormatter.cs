@@ -64,7 +64,7 @@ public partial class JsonSequenceOutputFormatter : TextOutputFormatter
         if (logger is not null) return logger;
         return NullLogger.Instance;
     }
-    JsonSerializerOptions GetOptions(IServiceProvider provider, ILogger logger)
+    static JsonSerializerOptions GetOptions(IServiceProvider provider, ILogger logger)
     {
         var jsonOptions = provider.GetService<IOptions<JsonOptions>>()?.Value;
         if (jsonOptions is null)
@@ -73,7 +73,6 @@ public partial class JsonSequenceOutputFormatter : TextOutputFormatter
             jsonOptions = new JsonOptions();
         }
         return jsonOptions.JsonSerializerOptions;
-
     }
 
     /// <inheritdoc cref="TextOutputFormatter.WriteResponseBodyAsync(OutputFormatterWriteContext, Encoding)" />

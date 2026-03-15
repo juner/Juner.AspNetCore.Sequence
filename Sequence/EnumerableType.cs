@@ -21,4 +21,12 @@ public enum EnumerableType
     /// 
     /// </summary>
     ChannelReader = 2,
+    /// <summary>
+    /// 
+    /// </summary>
+    Array = 3,
+    /// <summary>
+    /// 
+    /// </summary>
+    List = 4,
 }

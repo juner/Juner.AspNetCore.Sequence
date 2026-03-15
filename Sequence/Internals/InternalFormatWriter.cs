@@ -92,7 +92,7 @@ internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSeriali
           OutputType switch
           {
               EnumerableType.AsyncEnumerable => WriteAsyncEnumerableMethod,
-              EnumerableType.Enumerable => WriteEnumerableMethod,
+              EnumerableType.Enumerable or EnumerableType.Array or EnumerableType.List => WriteEnumerableMethod,
               EnumerableType.ChannelReader => WriteChannelReaderMethod,
               _ => throw new InvalidOperationException(),
           } ?? throw new InvalidOperationException();

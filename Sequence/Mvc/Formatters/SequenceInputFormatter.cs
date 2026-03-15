@@ -1,13 +1,19 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 
 namespace Juner.AspNetCore.Sequence.Mvc.Formatters;
 
-public class SequenceInputFormatter : TextInputFormatter
+public partial class SequenceInputFormatter : TextInputFormatter
 {
     public JsonSerializerOptions SerializerOptions { get; }
 
@@ -28,17 +34,34 @@ public class SequenceInputFormatter : TextInputFormatter
     }
 
     protected override bool CanReadType(Type type)
-        => TryGetElementType(type, out _);
+        => TryGetElementType(type, out _, out _);
 
     public override bool CanRead(InputFormatterContext context)
     {
         if (!base.CanRead(context))
             return false;
 
-        if (!TryGetElementType(context.ModelType, out _))
+        if (!TryGetElementType(context.ModelType, out _,  out _))
             return false;
 
         return true;
+    }
+    ILogger GetLogger(IServiceProvider provider)
+    {
+        var loggerType = typeof(ILogger<>).MakeGenericType(GetType());
+        var logger = provider.GetService(loggerType) as ILogger;
+        if (logger is not null) return logger;
+        return NullLogger.Instance;
+    }
+    static JsonSerializerOptions GetOptions(IServiceProvider provider, ILogger logger)
+    {
+        var jsonOptions = provider.GetService<IOptions<JsonOptions>>()?.Value;
+        if (jsonOptions is null)
+        {
+            Log.LogNotHaveJsonOptions(logger);
+            jsonOptions = new JsonOptions();
+        }
+        return jsonOptions.JsonSerializerOptions;
     }
 
     public override async Task<InputFormatterResult> ReadRequestBodyAsync(
@@ -46,8 +69,12 @@ public class SequenceInputFormatter : TextInputFormatter
         Encoding encoding)
     {
         var request = context.HttpContext.Request;
+        var cancellationToken = context.HttpContext.RequestAborted;
+        var httpContext = context.HttpContext;
+        var logger = GetLogger(httpContext.RequestServices);
+        var jsonSerializerOptions = GetOptions(httpContext.RequestServices, logger);
 
-        if (!TryGetElementType(context.ModelType, out var elementType))
+        if (!TryGetElementType(context.ModelType, out var enumerableType, out var elementType))
             return await InputFormatterResult.FailureAsync();
 
         var method = GetType()
@@ -59,6 +86,8 @@ public class SequenceInputFormatter : TextInputFormatter
             request,
             context.HttpContext.RequestAborted
         ]);
+        if (result is Task taskResult)
+            return await InputFormatterResult.SuccessAsync(await (Task<object>)taskResult);
 
         return await InputFormatterResult.SuccessAsync(result);
     }
@@ -89,9 +118,10 @@ public class SequenceInputFormatter : TextInputFormatter
         }
     }
 
-    static bool TryGetElementType(Type type, [NotNullWhen(true)] out Type? elementType)
+    static bool TryGetElementType(Type type,out EnumerableType enumerableType, [NotNullWhen(true)] out Type? elementType)
     {
         elementType = null;
+        enumerableType = default;
 
         if (type.IsGenericType)
         {
@@ -99,9 +129,15 @@ public class SequenceInputFormatter : TextInputFormatter
 
             if (def == typeof(IAsyncEnumerable<>)
              || def == typeof(IEnumerable<>)
+             || def == typeof(ChannelReader<>)
              || def == typeof(List<>))
             {
                 elementType = type.GetGenericArguments()[0];
+                enumerableType =
+                    def == typeof(IEnumerable<>) ? EnumerableType.Enumerable
+                    : def == typeof(ChannelReader<>) ? EnumerableType.ChannelReader
+                    : def == typeof(List<>) ? EnumerableType.List
+                    : EnumerableType.AsyncEnumerable;
                 return true;
             }
         }
@@ -109,9 +145,19 @@ public class SequenceInputFormatter : TextInputFormatter
         if (type.IsArray)
         {
             elementType = type.GetElementType();
+            enumerableType = EnumerableType.Array;
             return elementType != null;
         }
 
         return false;
     }
+    static partial class Log
+    {
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "not register IOptions<Microsoft.AspNetCore.Mvc.JsonOptions>"
+        )]
+        public static partial void LogNotHaveJsonOptions(ILogger logger);
+    }
+
 }

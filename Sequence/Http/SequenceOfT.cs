@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 
 namespace Juner.AspNetCore.Sequence.Http;
@@ -9,26 +10,30 @@ public sealed partial class Sequence<T> : IAsyncEnumerable<T>
     public Sequence(IAsyncEnumerable<T> values) => _values = values;
     public Sequence(ChannelReader<T> values) => _values = values;
     public Sequence(IEnumerable<T> values) => _values = values;
-    public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+        => _values switch
     {
-        if (_values is IAsyncEnumerable<T> asyncEnumerable)
-        {
-            await foreach (var item in asyncEnumerable.WithCancellation(cancellationToken))
+        IAsyncEnumerable<T> asyncEnumerable => asyncEnumerable.GetAsyncEnumerator(),
+        ChannelReader<T> channelReader => GetAsyncEnumerator(channelReader, cancellationToken),
+        IEnumerable<T> enumerable => GetAsyncEnumerator(enumerable),
+        _ => GetAsyncEnumerator(),
+    };
+
+    static async IAsyncEnumerator<T> GetAsyncEnumerator(ChannelReader<T> channelReader, CancellationToken cancellationToken)
+    {
+        while (await channelReader.WaitToReadAsync(cancellationToken))
+            if (channelReader.TryRead(out var item))
                 yield return item;
-            yield break;
-        }
-        if (_values is ChannelReader<T> channelReader)
-        {
-            while (await channelReader.WaitToReadAsync(cancellationToken))
-                if (channelReader.TryRead(out var item))
-                    yield return item;
-            yield break;
-        }
-        if (_values is IEnumerable<T> enumerable)
-        {
-            foreach (var item in enumerable)
-                yield return item;
-        }
+        yield break;
+    }
+
+    static async IAsyncEnumerator<T> GetAsyncEnumerator(IEnumerable<T> enumerable)
+    {
+        foreach (var item in enumerable)
+            yield return item;
+    }
+    static async IAsyncEnumerator<T> GetAsyncEnumerator()
+    {
         yield break;
     }
     static partial class Log
