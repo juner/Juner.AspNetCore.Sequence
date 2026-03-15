@@ -33,8 +33,16 @@ jobs:
         run: dotnet build --no-restore
         working-directory: ./
 
-      - name: Run MSTest tests
-        run: dotnet test --no-build --logger:"trx;LogFilePrefix=test_result"
+      - name: Run MSTest tests (net8.0)
+        run: dotnet test --no-build -f net8.0  --logger:"trx;LogFilePrefix=test_result"
+        working-directory: ./
+        
+      - name: Run MSTest tests (net9.0)
+        run: dotnet test --no-build -f net9.0  --logger:"trx;LogFilePrefix=test_result"
+        working-directory: ./
+        
+      - name: Run MSTest tests (net10.0)
+        run: dotnet test --no-build -f net10.0  --logger:"trx;LogFilePrefix=test_result"
         working-directory: ./
       
       - name: Publish test results as GitHub report
