@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 
-namespace Juner.AspNetCore.Http;
+namespace Juner.AspNetCore.Sequence;
 
 [TestClass]
 public class SequenceTests
@@ -19,7 +19,6 @@ public class SequenceTests
 #else
         TestContext.CancellationTokenSource.Token;
 #endif
-    record Person(string Name, int Age);
 
     static DefaultHttpContext CreateContext(string contentType, string body)
     {

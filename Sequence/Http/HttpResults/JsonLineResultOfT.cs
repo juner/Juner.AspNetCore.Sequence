@@ -5,33 +5,27 @@ using System.Reflection;
 using System.Threading.Channels;
 
 #if NET8_0_OR_GREATER
-using System.Net.Mime;
 #endif
 
 namespace Juner.AspNetCore.Sequence.Http.HttpResults;
 
-public sealed class JsonSequenceResult<T> : SequenceResultBase<T>, IEndpointMetadataProvider
+public sealed class JsonLineResult<T> : SequenceResultBase<T>, IEndpointMetadataProvider
 {
     /// <summary>
     /// 
     /// </summary>
     /// <param name="values"></param>
-    public JsonSequenceResult(IEnumerable<T> values) : base(values) { }
+    public JsonLineResult(IEnumerable<T> values) : base(values) { }
 
     /// <summary>
     /// 
     /// </summary>
     /// <param name="values"></param>
-    public JsonSequenceResult(IAsyncEnumerable<T> values) : base(values) { }
+    public JsonLineResult(IAsyncEnumerable<T> values) : base(values) { }
 
-    public JsonSequenceResult(ChannelReader<T> values) : base(values) { }
+    public JsonLineResult(ChannelReader<T> values) : base(values) { }
 
-    #region RS
-    static ReadOnlyMemory<byte>? _rs;
-    static ReadOnlyMemory<byte> RS => _rs ??= "\u001e"u8.ToArray();
-    #endregion
-
-    protected override ReadOnlyMemory<byte> Begin => RS;
+    protected override ReadOnlyMemory<byte> Begin => default;
 
     #region LF
     static ReadOnlyMemory<byte>? _lf;
@@ -50,11 +44,7 @@ public sealed class JsonSequenceResult<T> : SequenceResultBase<T>, IEndpointMeta
 
     #region ContentType
     const string CONTENT_TYPE =
-#if NET8_0_OR_GREATER
-        MediaTypeNames.Application.JsonSequence;
-#else
-        "application/json-seq";
-#endif
+        "application/jsonl";
     /// <summary>
     /// json-seq content type
     /// </summary>

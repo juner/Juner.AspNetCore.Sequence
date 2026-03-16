@@ -19,8 +19,6 @@ public class SequenceInputFormatterTests
         TestContext.CancellationTokenSource.Token;
 #endif
 
-    record Person(string Name, int Age);
-
     [TestMethod]
     public async Task NDJSON_Read_List()
     {
@@ -45,7 +43,7 @@ public class SequenceInputFormatterTests
         Assert.AreEqual("Alice", list[0].Name);
         Assert.AreEqual("Bob", list[1].Name);
     }
-    
+
     [TestMethod]
     public async Task NDJSON_Read_Enumerable()
     {
@@ -135,7 +133,7 @@ public class SequenceInputFormatterTests
     {
         if (asyncEnumerable is null) return [];
         List<T>? list = null;
-        await foreach(var item in asyncEnumerable.WithCancellation(cancellationToken))
+        await foreach (var item in asyncEnumerable.WithCancellation(cancellationToken))
             (list ??= []).Add(item);
         return list ?? [];
     }
