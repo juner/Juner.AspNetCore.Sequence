@@ -3,3 +3,8 @@ public interface ISequenceHttpResult<T> : ISequenceHttpResult
 {
 
 }
+
+public class SequenceHttpResult<T> : ISequenceHttpResult
+{
+    
+}

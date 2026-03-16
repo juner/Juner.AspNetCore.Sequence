@@ -2,7 +2,10 @@
 using Microsoft.AspNetCore.Http.Metadata;
 using System.Diagnostics;
 
+#pragma warning disable IDE0130 // Namespace がフォルダー構造と一致しません
 namespace Microsoft.AspNetCore.Http;
+#pragma warning restore IDE0130 // Namespace がフォルダー構造と一致しません
+
 
 /// <summary>
 /// Specifies the type of the value and status code returned by the action.
