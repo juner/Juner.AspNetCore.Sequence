@@ -101,13 +101,13 @@ internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSeriali
 
     public static Task WriteAsync<Enumerable, T>(
         Enumerable? @object,
-        HttpContext httpContext, 
-        JsonTypeInfo? jsonTypeInfo, 
+        HttpContext httpContext,
+        JsonTypeInfo? jsonTypeInfo,
         JsonSerializerOptions serializeOptions,
-        Encoding SelectedEncoding, 
-        ILogger logger, 
+        Encoding SelectedEncoding,
+        ILogger logger,
         ReadOnlyMemory<byte> Begin,
-        ReadOnlyMemory<byte> End, 
+        ReadOnlyMemory<byte> End,
         CancellationToken cancellationToken)
     {
         if (!TryGetOutputMode(typeof(Enumerable), out var OutputType, out var type))
@@ -367,7 +367,7 @@ Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switc
 #else
                 {
                     var stream = httpContext.Response.Body;
-                    while(await values.WaitToReadAsync(cancellationToken))
+                    while (await values.WaitToReadAsync(cancellationToken))
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                         var value = await values.ReadAsync(cancellationToken);

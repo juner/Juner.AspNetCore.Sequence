@@ -11,12 +11,12 @@ public sealed partial class Sequence<T> : IAsyncEnumerable<T>
     public Sequence(IEnumerable<T> values) => _values = values;
     public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         => _values switch
-    {
-        IAsyncEnumerable<T> asyncEnumerable => asyncEnumerable.GetAsyncEnumerator(),
-        ChannelReader<T> channelReader => GetAsyncEnumerator(channelReader, cancellationToken),
-        IEnumerable<T> enumerable => GetAsyncEnumerator(enumerable),
-        _ => GetAsyncEnumerator(),
-    };
+        {
+            IAsyncEnumerable<T> asyncEnumerable => asyncEnumerable.GetAsyncEnumerator(),
+            ChannelReader<T> channelReader => GetAsyncEnumerator(channelReader, cancellationToken),
+            IEnumerable<T> enumerable => GetAsyncEnumerator(enumerable),
+            _ => GetAsyncEnumerator(),
+        };
 
     static async IAsyncEnumerator<T> GetAsyncEnumerator(ChannelReader<T> channelReader, CancellationToken cancellationToken)
     {

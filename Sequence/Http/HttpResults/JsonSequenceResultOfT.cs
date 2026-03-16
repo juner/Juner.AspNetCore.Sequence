@@ -16,7 +16,7 @@ public sealed class JsonSequenceResult<T> : SequenceResultBase<T>, IEndpointMeta
     /// 
     /// </summary>
     /// <param name="values"></param>
-    internal JsonSequenceResult(IEnumerable<T> values) :base(values) { }
+    internal JsonSequenceResult(IEnumerable<T> values) : base(values) { }
 
     /// <summary>
     /// 

@@ -97,7 +97,7 @@ public abstract partial class SequenceResultBase<T> : IResult, IStatusCodeHttpRe
 
         // Creating the logger with a string to preserve the category after the refactoring.
         var logger = GetLogger(httpContext.RequestServices);
-        
+
         httpContext.Response.StatusCode = StatusCode;
         if (string.IsNullOrEmpty(httpContext.Response.ContentType))
             httpContext.Response.ContentType = ContentType;
@@ -151,7 +151,7 @@ public abstract partial class SequenceResultBase<T> : IResult, IStatusCodeHttpRe
                     End: End,
                     SelectedEncoding: Encoding.UTF8,
                     logger: logger,
-                    cancellationToken: httpContext.RequestAborted 
+                    cancellationToken: httpContext.RequestAborted
                 );
         }
     }

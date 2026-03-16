@@ -16,7 +16,7 @@ using MediaTypeNames = System.Net.Mime.MediaTypeNames;
 
 namespace Juner.AspNetCore.Sequence.Http;
 
-public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
+public partial class Sequence<T> : IBindableFromHttpContext<Sequence<T>>
 {
     #region static BindAsync
 
@@ -49,7 +49,7 @@ public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
 
         if (string.IsNullOrEmpty(request.ContentType) || !MediaTypeHeaderValue.TryParse(request.ContentType, out var mediaTypeHeaderValue))
             throw new ArgumentException("required context.Request.ContentType is parsable.");
-        
+
         var jsonTypeInfo = (JsonTypeInfo<T>)serializerOptions.GetTypeInfo(typeof(T));
 
         foreach (var (match, func) in MakePatternActionList)
@@ -62,8 +62,8 @@ public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
 
     #region delimiters
 
-    static readonly byte[] RS = [.."\u001e"u8];
-    static readonly byte[] LF = [.."\n"u8];
+    static readonly byte[] RS = [.. "\u001e"u8];
+    static readonly byte[] LF = [.. "\n"u8];
 
     static readonly ReadOnlyMemory<byte>[] JSONSEQ_START = [RS];
     static readonly ReadOnlyMemory<byte>[] JSONSEQ_END = [LF];
@@ -109,7 +109,7 @@ public partial class Sequence<T>: IBindableFromHttpContext<Sequence<T>>
             {
                 // application/x-ndjson support
                 const string contentType = "application/x-ndjson";
-                yield return new (IsNdJson, JsonLine);
+                yield return new(IsNdJson, JsonLine);
                 static bool IsNdJson(MediaTypeHeaderValue mediaTypeHeaderValue) => mediaTypeHeaderValue.MediaType.Equals(contentType, StringComparison.OrdinalIgnoreCase) == true;
             }
             {

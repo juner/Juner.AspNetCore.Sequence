@@ -19,16 +19,16 @@ internal sealed class ProducesResponseTypeMetadata(int statusCode, Type? type = 
 
     /// <inheritdoc/>
     public Type? Type { get; } = type;
-    
+
     /// <inheritdoc/>
     public int StatusCode { get; } = statusCode;
-    
+
     /// <inheritdoc/>
     public string? Description { get; set; }
-    
+
     /// <inheritdoc/>
     public IEnumerable<string> ContentTypes { get; } = contentTypes ?? Enumerable.Empty<string>();
 
-    public override string ToString() => $"{nameof(ProducesResponseTypeMetadata)} {{ {nameof(Type)}:{Type}, {nameof(StatusCode)}:{StatusCode}, {nameof(Description)}:{Description}, {nameof(ContentTypes)}:{string.Join(", ", ContentTypes ?? Enumerable.Empty<string>())} }}"; 
+    public override string ToString() => $"{nameof(ProducesResponseTypeMetadata)} {{ {nameof(Type)}:{Type}, {nameof(StatusCode)}:{StatusCode}, {nameof(Description)}:{Description}, {nameof(ContentTypes)}:{string.Join(", ", ContentTypes ?? Enumerable.Empty<string>())} }}";
 }
 #endif
