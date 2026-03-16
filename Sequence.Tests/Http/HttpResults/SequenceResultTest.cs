@@ -77,8 +77,8 @@ public class SequenceResultTests
 
         var body = await GetResponseBody(ctx, CancellationToken);
 
-        Assert.IsTrue(body.Contains("alice"));
-        Assert.IsTrue(body.Contains("bob"));
+        Assert.Contains("alice", body);
+        Assert.Contains("bob", body);
     }
 
     [TestMethod]

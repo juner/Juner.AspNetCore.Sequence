@@ -9,8 +9,10 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
-using Microsoft.Extensions.Primitives;
 using System.Net.Mime;
+using Microsoft.Net.Http.Headers;
+
+
 
 
 
@@ -50,11 +52,29 @@ public partial class SequenceResult<T> : IResult
         var logger = GetLogger(httpContext.RequestServices);
 
         httpContext.Response.StatusCode = StatusCode;
-        var contentType = httpContext.Request.Headers.Accept is { Count: > 0 } and { } accept
-            ? accept
-            : new StringValues(_contentType);
-        if (!TryGetPattern(contentType, out var begin, out var end))
-            throw new InvalidOperationException($"required accept or not support accept:{httpContext.Request.Headers.Accept}");
+        string? contentType = null;
+        ReadOnlyMemory<byte> begin = default;
+        ReadOnlyMemory<byte> end = default;
+        {
+            var accepts = MediaTypeHeaderValue.ParseList(httpContext.Request.Headers.Accept);
+
+            if (accepts.Count > 0)
+            {
+                foreach (var accept in accepts)
+                {
+                    if (TryGetPattern(accept.MediaType.ToString(), out begin, out end))
+                    {
+                        contentType = accept.MediaType.ToString();
+                        break;
+                    }
+                }
+                if (string.IsNullOrEmpty(contentType))
+                    throw new InvalidOperationException($"not support accept:{httpContext.Request.Headers.Accept}");
+            }
+            contentType ??= _contentType;
+        }
+        if (string.IsNullOrEmpty(contentType))
+            throw new InvalidOperationException($"not have contentType target");
         if (string.IsNullOrEmpty(httpContext.Response.ContentType))
             httpContext.Response.ContentType = contentType;
 
@@ -62,7 +82,7 @@ public partial class SequenceResult<T> : IResult
 #if !NET8_0_OR_GREATER
         serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
 #endif
-        if (contentType.Equals(MediaTypeNames.Application.Json))
+        if (contentType.Equals(MediaTypeNames.Application.Json, StringComparison.OrdinalIgnoreCase))
         {
             var jsonTypeInfo2 = serializerOptions.GetTypeInfo<IAsyncEnumerable<T>>();
             await JsonSerializer.SerializeAsync(utf8Json: httpContext.Response.Body, value: ToAsyncEnumerable(httpContext.RequestAborted), jsonTypeInfo: jsonTypeInfo2, httpContext.RequestAborted);

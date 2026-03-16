@@ -9,7 +9,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Text.Json;
 using System.Threading.Channels;
 using System.Diagnostics;
-using System.Net.Http.Headers;
 
 
 #if !NET8_0_OR_GREATER

@@ -30,7 +30,7 @@ public partial class SequenceResult<T> : IStatusCodeHttpResult, ISequenceHttpRes
     {
         if (_values is IAsyncEnumerable<T> asyncEnumerable)
         {
-            await foreach (var item in asyncEnumerable)
+            await foreach (var item in asyncEnumerable.WithCancellation(cancellationToken))
                 yield return item;
             yield break;
         }
