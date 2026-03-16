@@ -151,13 +151,15 @@ public partial class SequenceInputFormatter : TextInputFormatter
             if (def == typeof(IAsyncEnumerable<>)
              || def == typeof(IEnumerable<>)
              || def == typeof(ChannelReader<>)
-             || def == typeof(List<>))
+             || def == typeof(List<>)
+             || def == typeof(Http.Sequence<>))
             {
                 elementType = type.GetGenericArguments()[0];
                 enumerableType =
                     def == typeof(IEnumerable<>) ? EnumerableType.Enumerable
                     : def == typeof(ChannelReader<>) ? EnumerableType.ChannelReader
                     : def == typeof(List<>) ? EnumerableType.List
+                    : def == typeof(Http.Sequence<>) ? EnumerableType.Sequence
                     : EnumerableType.AsyncEnumerable;
                 return true;
             }

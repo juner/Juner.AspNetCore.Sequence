@@ -1,5 +1,4 @@
-﻿using Juner.AspNetCore.Sequence.Http;
-using System.Buffers;
+﻿using System.Buffers;
 using System.Collections.Concurrent;
 using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
@@ -24,12 +23,12 @@ internal class InternalFormatReader
         return enumerableType switch
         {
             EnumerableType.AsyncEnumerable => asyncEnumerable,
-            EnumerableType.Sequence => new Sequence<T>(asyncEnumerable),
+            EnumerableType.Sequence => new Http.Sequence<T>(asyncEnumerable),
             EnumerableType.Enumerable => GetEnumerableAsync(asyncEnumerable, cancellationToken),
             EnumerableType.Array => GetArrayAsync(asyncEnumerable, cancellationToken),
             EnumerableType.List => GetListAsync(asyncEnumerable, cancellationToken),
             EnumerableType.ChannelReader => GetChannelReader(asyncEnumerable, cancellationToken),
-            _ => throw new NotSupportedException($"type:{enumerableType} is not support"),
+            _ => throw new InvalidOperationException($"type:{enumerableType} is not support"),
         };
     }
 
@@ -71,7 +70,11 @@ internal class InternalFormatReader
         var method =
             typeof(InternalFormatReader)
             .GetMethods()
-            .First(v => v is { Name: nameof(ReadResult), IsGenericMethod: true })
+            .First(static v => v is
+            {
+                Name: nameof(ReadResult),
+                IsGenericMethod: true
+            } && v.GetParameters() is { Length: 6 })
             .MakeGenericMethod(elementType);
 
         return method.CreateDelegate(

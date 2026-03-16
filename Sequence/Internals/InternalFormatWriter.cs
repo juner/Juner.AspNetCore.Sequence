@@ -17,38 +17,15 @@ using System.IO.Pipelines;
 
 namespace Juner.AspNetCore.Sequence.Internals;
 
-internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSerializerOptions serializerOptions, Encoding selectedEncoding, HttpContext httpContext, EnumerableType OutputType, Type type, ILogger logger, ReadOnlyMemory<byte> begin = default, ReadOnlyMemory<byte> end = default)
+internal static class InternalFormatWriter
 {
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="serializerOptions"></param>
-    /// <param name="context"></param>
-    /// <param name="selectedEncoding"></param>
-    /// <param name="begin"></param>
-    /// <param name="end"></param>
-    /// <returns></returns>
-    /// <exception cref="InvalidOperationException"></exception>
-    public static InternalFormatWriter Create(JsonSerializerOptions serializerOptions, OutputFormatterWriteContext context, Encoding selectedEncoding, ILogger logger, ReadOnlyMemory<byte> begin = default, ReadOnlyMemory<byte> end = default)
-    {
-        if (!TryGetOutputMode(context.ObjectType, out var outputType, out var type))
-            throw new InvalidOperationException();
-        return new InternalFormatWriter(context.Object, context.ObjectType, serializerOptions, selectedEncoding, context.HttpContext, outputType, type, logger, begin, end);
-    }
-    readonly ReadOnlyMemory<byte> Begin = begin;
-    readonly ReadOnlyMemory<byte> End = end;
-    readonly JsonSerializerOptions SerializerOptions = serializerOptions;
-    readonly JsonTypeInfo? JsonTypeInfo = GetJsonTypeInfo(serializerOptions, type);
-    readonly Encoding SelectedEncoding = selectedEncoding;
-    readonly HttpContext httpContext = httpContext;
-    readonly EnumerableType OutputType = OutputType;
-    private readonly ILogger logger = logger;
     static IDictionary<Type, EnumerableType>? _targetInterface;
     static IDictionary<Type, EnumerableType> TargetInterfaces => _targetInterface ??= new Dictionary<Type, EnumerableType>()
     {
-        {typeof(IAsyncEnumerable<>), EnumerableType.AsyncEnumerable},
+        {typeof(IAsyncEnumerable<>), EnumerableType.AsyncEnumerable },
         {typeof(IEnumerable<>), EnumerableType.Enumerable },
         {typeof(ChannelReader<>), EnumerableType.ChannelReader },
+        {typeof(Http.Sequence<>), EnumerableType.Sequence },
     }.AsReadOnly();
     public static bool TryGetOutputMode([NotNullWhen(true)] Type? objectType, [NotNullWhen(true)] out EnumerableType outputType, [NotNullWhen(true)] out Type type)
     {
@@ -86,18 +63,31 @@ internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSeriali
         else
             return null;
     }
-    public Task WriteResponseBodyAsync(CancellationToken cancellationToken)
-        => WriteAsync(
-            ObjectType,
-            Object,
+    public static Task WriteResponseBodyAsync(
+        Type? objectType,
+        object? @object,
+        HttpContext httpContext,
+        JsonSerializerOptions serializerOptions,
+        Encoding selectedEncoding,
+        ILogger logger,
+        ReadOnlyMemory<byte> begin,
+        ReadOnlyMemory<byte> end,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetOutputMode(objectType, out _, out var type))
+            throw new InvalidOperationException();
+        return WriteAsync(
+            objectType,
+            @object,
             httpContext,
-            JsonTypeInfo,
-            SerializerOptions,
-            SelectedEncoding,
+            GetJsonTypeInfo(serializerOptions, type),
+            serializerOptions,
+            selectedEncoding,
             logger,
-            Begin,
-            End,
+            begin,
+            end,
             cancellationToken);
+    }
 
     public static Task WriteAsync<Enumerable, T>(
         Enumerable? @object,
@@ -113,13 +103,13 @@ internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSeriali
         if (!TryGetOutputMode(typeof(Enumerable), out var OutputType, out var type))
             throw new InvalidOperationException($"not support output type ");
         var jsonTypeInfo2 = (JsonTypeInfo<T>?)jsonTypeInfo;
-        if (OutputType is EnumerableType.AsyncEnumerable)
-            return WriteAsyncFromAsyncEnumerable(@object as IAsyncEnumerable<T>, httpContext, jsonTypeInfo2, serializeOptions, SelectedEncoding, logger, Begin, End, cancellationToken);
-        else if (OutputType is EnumerableType.Enumerable or EnumerableType.Array or EnumerableType.List)
-            return WriteAsyncFromEnumerable(@object as IEnumerable<T>, httpContext, jsonTypeInfo2, serializeOptions, SelectedEncoding, logger, Begin, End, cancellationToken);
-        else if (OutputType is EnumerableType.ChannelReader)
-            return WriteAsyncFromChannelReader(@object as ChannelReader<T>, httpContext, jsonTypeInfo2, serializeOptions, SelectedEncoding, logger, Begin, End, cancellationToken);
-        return Task.FromException(new NotImplementedException($"not support pattern {@object?.GetType().Name ?? "null"} and {OutputType}"));
+        return OutputType switch
+        {
+            EnumerableType.AsyncEnumerable or EnumerableType.Sequence => WriteAsyncFromAsyncEnumerable(@object as IAsyncEnumerable<T>, httpContext, jsonTypeInfo2, serializeOptions, SelectedEncoding, logger, Begin, End, cancellationToken),
+            EnumerableType.Enumerable or EnumerableType.Array or EnumerableType.List => WriteAsyncFromEnumerable(@object as IEnumerable<T>, httpContext, jsonTypeInfo2, serializeOptions, SelectedEncoding, logger, Begin, End, cancellationToken),
+            EnumerableType.ChannelReader => WriteAsyncFromChannelReader(@object as ChannelReader<T>, httpContext, jsonTypeInfo2, serializeOptions, SelectedEncoding, logger, Begin, End, cancellationToken),
+            _ => Task.FromException(new NotImplementedException($"not support pattern {@object?.GetType().Name ?? "null"} and {OutputType}")),
+        };
     }
 
     static readonly ConcurrentDictionary<Type, Delegate> cache = new();
@@ -170,10 +160,11 @@ internal class InternalFormatWriter(object? Object, Type ObjectType, JsonSeriali
         var method =
             typeof(InternalFormatWriter)
             .GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .First(static m =>
-                m.Name == nameof(WriteAsync) &&
-                m.IsGenericMethodDefinition &&
-                m.GetParameters().Length == 9)
+            .First(static m => m is
+            {
+                Name: nameof(WriteAsync),
+                IsGenericMethodDefinition: true
+            } && m.GetParameters() is { Length: 9 })
             .MakeGenericMethod(objectType, type);
 
         // parameters
