@@ -61,7 +61,9 @@ public partial class SequenceResult<T> : IResult
         httpContext.Response.ContentType = contentType;
 
         var serializerOptions = GetOptions(httpContext.RequestServices, logger);
-
+#if !NET8_0_OR_GREATER
+        serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
+#endif
         var values = ToAsyncEnumerable(httpContext.RequestAborted);
 
         if (contentType == MediaTypeNames.Application.Json)
