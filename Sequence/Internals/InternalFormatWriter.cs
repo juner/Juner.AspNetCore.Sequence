@@ -11,7 +11,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using System.Threading.Channels;
 
-
 #if NET9_0_OR_GREATER
 using System.IO.Pipelines;
 #endif
