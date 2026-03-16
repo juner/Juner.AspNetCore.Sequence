@@ -46,95 +46,49 @@ public partial class SequenceResult<T> : IResult
     /// <inheritdoc/>
     public async Task ExecuteAsync(HttpContext httpContext)
     {
-        ArgumentNullException.ThrowIfNull(httpContext);
-
-        // Creating the logger with a string to preserve the category after the refactoring.
         var logger = GetLogger(httpContext.RequestServices);
 
         httpContext.Response.StatusCode = StatusCode;
-        string? contentType = null;
-        ReadOnlyMemory<byte> begin = default;
-        ReadOnlyMemory<byte> end = default;
-        {
-            var accepts = MediaTypeHeaderValue.ParseList(httpContext.Request.Headers.Accept);
 
-            if (accepts.Count > 0)
-            {
-                foreach (var accept in accepts)
-                {
-                    if (TryGetPattern(accept.MediaType.ToString(), out begin, out end))
-                    {
-                        contentType = accept.MediaType.ToString();
-                        break;
-                    }
-                }
-                if (string.IsNullOrEmpty(contentType))
-                    throw new InvalidOperationException($"not support accept:{httpContext.Request.Headers.Accept}");
-            }
-            contentType ??= _contentType;
-        }
-        if (string.IsNullOrEmpty(contentType))
-            throw new InvalidOperationException($"not have contentType target");
-        if (string.IsNullOrEmpty(httpContext.Response.ContentType))
-            httpContext.Response.ContentType = contentType;
+        if (!TrySelectPattern(
+            httpContext,
+            _contentType,
+            out var contentType,
+            out var begin,
+            out var end))
+            throw new InvalidOperationException();
+
+        httpContext.Response.ContentType = contentType;
 
         var serializerOptions = GetOptions(httpContext.RequestServices, logger);
-#if !NET8_0_OR_GREATER
-        serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
-#endif
-        if (contentType.Equals(MediaTypeNames.Application.Json, StringComparison.OrdinalIgnoreCase))
+
+        var values = ToAsyncEnumerable(httpContext.RequestAborted);
+
+        if (contentType == MediaTypeNames.Application.Json)
         {
-            var jsonTypeInfo2 = serializerOptions.GetTypeInfo<IAsyncEnumerable<T>>();
-            await JsonSerializer.SerializeAsync(utf8Json: httpContext.Response.Body, value: ToAsyncEnumerable(httpContext.RequestAborted), jsonTypeInfo: jsonTypeInfo2, httpContext.RequestAborted);
+            var jsonTypeInfo = serializerOptions.GetTypeInfo<IAsyncEnumerable<T>>();
+
+            await JsonSerializer.SerializeAsync(
+                httpContext.Response.Body,
+                values,
+                jsonTypeInfo,
+                httpContext.RequestAborted);
+
             return;
         }
-        var jsonTypeInfo = serializerOptions.GetTypeInfo<T>();
-        if (_values is IAsyncEnumerable<T> asyncValues)
-        {
-            await InternalFormatWriter
-                .WriteAsyncFromAsyncEnumerable(
-                    values: asyncValues,
-                    httpContext: httpContext,
-                    SerializerOptions: serializerOptions,
-                    JsonTypeInfo: jsonTypeInfo,
-                    Begin: begin,
-                    End: end,
-                    SelectedEncoding: Encoding.UTF8,
-                    logger: logger,
-                    cancellationToken: httpContext.RequestAborted
-                );
-            return;
-        }
-        else if (_values is IEnumerable<T> values)
-        {
-            await InternalFormatWriter
-                .WriteAsyncFromEnumerable(
-                    values: values,
-                    httpContext: httpContext,
-                    SerializerOptions: serializerOptions,
-                    JsonTypeInfo: jsonTypeInfo,
-                    Begin: begin,
-                    End: end,
-                    SelectedEncoding: Encoding.UTF8,
-                    logger: logger,
-                    cancellationToken: httpContext.RequestAborted
-                );
-            return;
-        }
-        else if (_values is ChannelReader<T> channelReader)
-        {
-            await InternalFormatWriter
-                .WriteAsyncFromChannelReader(
-                    values: channelReader,
-                    httpContext: httpContext,
-                    SerializerOptions: serializerOptions,
-                    JsonTypeInfo: jsonTypeInfo,
-                    Begin: begin,
-                    End: end,
-                    SelectedEncoding: Encoding.UTF8,
-                    logger: logger,
-                    cancellationToken: httpContext.RequestAborted
-                );
-        }
+
+        var elementTypeInfo = serializerOptions.GetTypeInfo<T>();
+
+        await InternalFormatWriter.WriteAsyncFromAsyncEnumerable(
+            values,
+            httpContext,  
+            elementTypeInfo,
+            serializerOptions,  
+            Encoding.UTF8,
+            logger,
+            begin,
+            end,
+            httpContext.RequestAborted);
     }
+
 }

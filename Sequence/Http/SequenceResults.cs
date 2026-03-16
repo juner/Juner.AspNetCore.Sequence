@@ -1,5 +1,4 @@
 ﻿using Juner.AspNetCore.Sequence.Http.HttpResults;
-using System.Net.Mime;
 using System.Threading.Channels;
 
 namespace Juner.AspNetCore.Sequence.Http;

@@ -2,8 +2,9 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
+using Microsoft.Net.Http.Headers;
 using System.Diagnostics;
-using System.Net.Http.Headers;
 using System.Net.Mime;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -114,20 +115,47 @@ public partial class SequenceResult<T> : IStatusCodeHttpResult, ISequenceHttpRes
     }
 
     record MakePattern(string ContentType, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End);
-    static bool TryGetPattern(string? contentType, out ReadOnlyMemory<byte> begin, out ReadOnlyMemory<byte> end)
+    static bool TryGetPattern(StringSegment contentType, out ReadOnlyMemory<byte> begin, out ReadOnlyMemory<byte> end)
     {
         begin = default;
         end = default;
         if (!MediaTypeHeaderValue.TryParse(contentType, out var parsedValue))
             return false;
         foreach (var (mediaType, begin2, end2) in MakePatternList)
-            if (parsedValue.MediaType?.Equals(mediaType, StringComparison.OrdinalIgnoreCase) == true)
+            if (parsedValue.MediaType.Equals(mediaType, StringComparison.OrdinalIgnoreCase) == true)
             {
                 (begin, end) = (begin2, end2);
                 return true;
             }
 
         return false;
+    }
+    static bool TrySelectPattern(
+        HttpContext ctx,
+        string defaultContentType,
+        out string selectedContentType,
+        out ReadOnlyMemory<byte> begin,
+        out ReadOnlyMemory<byte> end)
+    {
+        begin = default;
+        end = default;
+        selectedContentType = defaultContentType;
+
+        var accepts = MediaTypeHeaderValue.ParseList(ctx.Request.Headers.Accept);
+
+        if (accepts is { Count: > 0 })
+        {
+            foreach (var accept in accepts)
+            {
+                if (TryGetPattern(accept.MediaType, out begin, out end))
+                {
+                    selectedContentType = accept.MediaType.ToString();
+                    return true;
+                }
+            }
+            return false;
+        }
+        return TryGetPattern(defaultContentType, out begin, out end);
     }
     static MakePattern[]? _makePatternList;
     static MakePattern[] MakePatternList => _makePatternList ??= [.. MakePatterns()];
