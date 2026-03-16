@@ -19,8 +19,6 @@ public class SequenceInputFormatterTests
         TestContext.CancellationTokenSource.Token;
 #endif
 
-    record Person(string Name, int Age);
-
     [TestMethod]
     public async Task NDJSON_Read_List()
     {
@@ -47,6 +45,29 @@ public class SequenceInputFormatterTests
     }
 
     [TestMethod]
+    public async Task NDJSON_Read_Enumerable()
+    {
+        var body =
+            "{\"Name\":\"Alice\",\"Age\":30}\n" +
+            "{\"Name\":\"Bob\",\"Age\":25}\n";
+
+        var formatter = new SequenceInputFormatter();
+
+        var context = CreateContext<IEnumerable<Person>>(
+            "application/x-ndjson",
+            body);
+
+        var result = await formatter.ReadRequestBodyAsync(context, Encoding.UTF8);
+
+        Assert.IsFalse(result.HasError);
+
+        var enumerable = result.Model as IEnumerable<Person>;
+
+        Assert.IsNotNull(enumerable);
+        Assert.HasCount(2, enumerable.ToArray());
+    }
+
+    [TestMethod]
     public async Task JsonSeq_Read_Array()
     {
         var body =
@@ -65,6 +86,56 @@ public class SequenceInputFormatterTests
 
         Assert.IsNotNull(array);
         Assert.HasCount(2, array);
+    }
+
+    [TestMethod]
+    public async Task JsonSeq_Read_Sequence()
+    {
+        var body =
+            "\u001e{\"Name\":\"Alice\",\"Age\":30}\n" +
+            "\u001e{\"Name\":\"Bob\",\"Age\":25}\n";
+
+        var formatter = new SequenceInputFormatter();
+
+        var context = CreateContext<Http.Sequence<Person>>(
+            "application/json-seq",
+            body);
+
+        var result = await formatter.ReadRequestBodyAsync(context, Encoding.UTF8);
+
+        var array = result.Model as Http.Sequence<Person>;
+
+        Assert.IsNotNull(array);
+        Assert.HasCount(2, await ToArrayAsync(array, CancellationToken));
+    }
+
+    [TestMethod]
+    public async Task JsonSeq_Read_AsyncEnumerable()
+    {
+        var body =
+            "\u001e{\"Name\":\"Alice\",\"Age\":30}\n" +
+            "\u001e{\"Name\":\"Bob\",\"Age\":25}\n";
+
+        var formatter = new SequenceInputFormatter();
+
+        var context = CreateContext<IAsyncEnumerable<Person>>(
+            "application/json-seq",
+            body);
+
+        var result = await formatter.ReadRequestBodyAsync(context, Encoding.UTF8);
+
+        var array = result.Model as IAsyncEnumerable<Person>;
+
+        Assert.IsNotNull(array);
+        Assert.HasCount(2, await ToArrayAsync(array, CancellationToken));
+    }
+    static async Task<List<T>> ToArrayAsync<T>(IAsyncEnumerable<T>? asyncEnumerable, CancellationToken cancellationToken)
+    {
+        if (asyncEnumerable is null) return [];
+        List<T>? list = null;
+        await foreach (var item in asyncEnumerable.WithCancellation(cancellationToken))
+            (list ??= []).Add(item);
+        return list ?? [];
     }
 
     [TestMethod]

@@ -1,5 +1,4 @@
-﻿#if NET9_0_OR_GREATER
-#endif
+﻿using Juner.AspNetCore.Sequence.Http;
 
 namespace Juner.AspNetCore.Sequence;
 
@@ -29,4 +28,9 @@ public enum EnumerableType
     /// use <see cref="List{T}"/>
     /// </summary>
     List = 4,
+
+    /// <summary>
+    /// use <see cref="Sequence{T}"/> 
+    /// </summary>
+    Sequence = 5,
 }

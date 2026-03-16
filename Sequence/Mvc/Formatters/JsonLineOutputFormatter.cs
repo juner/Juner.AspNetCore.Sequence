@@ -83,14 +83,16 @@ public partial class JsonLineOutputFormatter : TextOutputFormatter
 #if !NET8_0_OR_GREATER
         serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
 #endif
-        await InternalFormatWriter.Create(
+        await InternalFormatWriter.WriteResponseBodyAsync(
+            objectType: context.ObjectType,
+            @object: context.Object,
             serializerOptions: serializerOptions,
+            httpContext: context.HttpContext,
+            selectedEncoding: selectedEncoding,
             begin: default,
             end: LF,
-            context: context,
-            selectedEncoding: selectedEncoding,
-            logger: logger
-        ).WriteResponseBodyAsync(cancellationToken);
+            logger: logger,
+            cancellationToken: cancellationToken);
     }
 
     #region LF

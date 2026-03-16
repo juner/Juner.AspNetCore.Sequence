@@ -47,7 +47,7 @@ public partial class SequenceInputFormatter : TextInputFormatter
         if (!base.CanRead(context))
             return false;
 
-        if (!TryGetElementType(context.ModelType, out _,  out _))
+        if (!TryGetElementType(context.ModelType, out _, out _))
             return false;
         if (!MediaTypeHeaderValue.TryParse(context.HttpContext.Request.ContentType!, out var parsedValue))
             return false;
@@ -95,7 +95,7 @@ public partial class SequenceInputFormatter : TextInputFormatter
         if (string.IsNullOrEmpty(context.HttpContext.Request.ContentType) || !MediaTypeHeaderValue.TryParse(context.HttpContext.Request.ContentType, out var parsedValue))
             return await InputFormatterResult.FailureAsync();
 
-        var mediaType = parsedValue.MediaType; 
+        var mediaType = parsedValue.MediaType;
         if (!TryGetSequenceType(mediaType, out var start, out var end))
             return await InputFormatterResult.FailureAsync();
 
@@ -139,7 +139,7 @@ public partial class SequenceInputFormatter : TextInputFormatter
         return false;
     }
 
-    static bool TryGetElementType(Type type,out EnumerableType enumerableType, [NotNullWhen(true)] out Type? elementType)
+    static bool TryGetElementType(Type type, out EnumerableType enumerableType, [NotNullWhen(true)] out Type? elementType)
     {
         elementType = null;
         enumerableType = default;
@@ -151,13 +151,15 @@ public partial class SequenceInputFormatter : TextInputFormatter
             if (def == typeof(IAsyncEnumerable<>)
              || def == typeof(IEnumerable<>)
              || def == typeof(ChannelReader<>)
-             || def == typeof(List<>))
+             || def == typeof(List<>)
+             || def == typeof(Http.Sequence<>))
             {
                 elementType = type.GetGenericArguments()[0];
                 enumerableType =
                     def == typeof(IEnumerable<>) ? EnumerableType.Enumerable
                     : def == typeof(ChannelReader<>) ? EnumerableType.ChannelReader
                     : def == typeof(List<>) ? EnumerableType.List
+                    : def == typeof(Http.Sequence<>) ? EnumerableType.Sequence
                     : EnumerableType.AsyncEnumerable;
                 return true;
             }
