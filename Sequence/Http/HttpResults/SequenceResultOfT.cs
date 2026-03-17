@@ -145,12 +145,16 @@ public partial class SequenceResult<T> : IStatusCodeHttpResult, ISequenceHttpRes
 
         if (accepts is { Count: > 0 })
         {
-            foreach (var accept in accepts)
+            foreach (var accept in accepts.OrderByDescending(a => a.Quality ?? 1))
             {
                 if (TryGetPattern(accept.MediaType, out begin, out end))
                 {
                     selectedContentType = accept.MediaType.ToString();
                     return true;
+                }
+                if (accept.MediaType == "*/*")
+                {
+                    return TryGetPattern(defaultContentType, out begin, out end);
                 }
             }
             return false;

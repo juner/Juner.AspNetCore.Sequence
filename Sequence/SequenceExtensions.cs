@@ -26,7 +26,7 @@ public static class SequenceExtensions
         return builder;
     }
     public static IMvcBuilder AddJsonSequenceOutputFormatter(this IMvcBuilder builder) => builder.AddOutputFormatter<JsonSequenceOutputFormatter>();
-    public static IMvcBuilder AddNdJsonOutputFormatter(this IMvcBuilder builder) => builder.AddOutputFormatter<JsonSequenceOutputFormatter>();
+    public static IMvcBuilder AddNdJsonOutputFormatter(this IMvcBuilder builder) => builder.AddOutputFormatter<NdJsonOutputFormatter>();
     public static IMvcBuilder AddJsonLineOutputFormatter(this IMvcBuilder builder) => builder.AddOutputFormatter<JsonLineOutputFormatter>();
     static IMvcBuilder AddOutputFormatter<T>(this IMvcBuilder builder)
         where T : TextOutputFormatter, new()
