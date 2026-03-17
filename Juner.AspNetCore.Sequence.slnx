@@ -3,6 +3,8 @@
     <File Path=".editorconfig" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Build.targets" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
   </Folder>
   <Project Path="Sequence.Tests/Juner.AspNetCore.Sequence.Tests.csproj" />
   <Project Path="Sequence/Juner.AspNetCore.Sequence.csproj" />
