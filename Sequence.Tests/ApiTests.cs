@@ -227,12 +227,12 @@ public class ApiTests
 public class PersonController : ControllerBase
 {
     [HttpPost("person/json-seq"), Consumes("application/json-seq"), Produces("application/json-seq")]
-    public ActionResult<IAsyncEnumerable<Person>> JsonSequence([FromBody]IAsyncEnumerable<Person> person) => Ok(person);
+    public ActionResult<IAsyncEnumerable<Person>> JsonSequence([FromBody] IAsyncEnumerable<Person> person) => Ok(person);
 
     [HttpPost("person/ndjson"), Consumes("application/x-ndjson"), Produces("application/x-ndjson")]
-    public ActionResult<IAsyncEnumerable<Person>> NdJson([FromBody]IAsyncEnumerable<Person> person) => Ok(person);
+    public ActionResult<IAsyncEnumerable<Person>> NdJson([FromBody] IAsyncEnumerable<Person> person) => Ok(person);
     [HttpPost("person/jsonline"), Consumes("application/jsonl"), Produces("application/jsonl")]
-    public ActionResult<IAsyncEnumerable<Person>> JsonLine([FromBody]IAsyncEnumerable<Person> person) => Ok(person);
+    public ActionResult<IAsyncEnumerable<Person>> JsonLine([FromBody] IAsyncEnumerable<Person> person) => Ok(person);
     [HttpPost("person-result/json-seq"), Consumes("application/json-seq")]
     public JsonSequenceResult<Person> ResJsonSequence([FromBody] IAsyncEnumerable<Person> person) => SequenceResults.JsonSequence(person);
 

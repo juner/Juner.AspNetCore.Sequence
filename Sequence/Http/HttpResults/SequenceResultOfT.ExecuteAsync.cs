@@ -8,13 +8,7 @@ using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Channels;
 using System.Net.Mime;
-using Microsoft.Net.Http.Headers;
-
-
-
-
 
 #if !NET8_0_OR_GREATER
 using System.Text.Json.Serialization.Metadata;
@@ -83,9 +77,9 @@ public partial class SequenceResult<T> : IResult
 
         await InternalFormatWriter.WriteAsyncFromAsyncEnumerable(
             values,
-            httpContext,  
+            httpContext,
             elementTypeInfo,
-            serializerOptions,  
+            serializerOptions,
             Encoding.UTF8,
             logger,
             begin,

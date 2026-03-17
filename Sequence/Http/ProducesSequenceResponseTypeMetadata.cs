@@ -12,7 +12,7 @@ public class ProducesSequenceResponseTypeMetadata : IProducesSequenceResponseTyp
 
         if (contentTypes is null || contentTypes.Length == 0)
         {
-            ContentTypes = Enumerable.Empty<string>();
+            ContentTypes = [];
         }
         else
         {

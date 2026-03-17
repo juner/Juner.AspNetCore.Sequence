@@ -9,4 +9,7 @@
   </Folder>
   <Project Path="Sequence.Tests/Juner.AspNetCore.Sequence.Tests.csproj" />
   <Project Path="Sequence/Juner.AspNetCore.Sequence.csproj" />
+  <Folder Name="/samples/" >
+
+  </Folder>
 </Solution>
