@@ -2,8 +2,43 @@
 
   <PropertyGroup>
     <RootNamespace>Juner.AspNetCore.Sequence</RootNamespace>
+    <PackageId>Juner.AspNetCore.Sequence</PackageId>
+    <Version>1.0.0-preview-1</Version>
+    <Authors>juner</Authors>
+    <Company>juner</Company>
+    <Description>Streaming JSON sequence support for ASP.NET Core.
+Supports NDJSON, JSON Lines, JSON Sequence, and JSON arrays using IAsyncEnumerable.</Description>
+    <PackageTags>aspnetcore;streaming;json;ndjson;jsonlines;json-seq;iasyncenumerable</PackageTags>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/juner/Juner.AspNetCore.Sequence</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/juner/Juner.AspNetCore.Sequence</PackageProjectUrl>
+    <PackAsTool>True</PackAsTool>
+    <FileVersion>1.0.0.1</FileVersion>
+    <AssemblyVersion>1.0.0.1</AssemblyVersion>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.201">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>True</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PackageIcon>icon.png</PackageIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="\" />
+    <None Include="../LICENSE" Pack="true" PackagePath="\" />
+    <None Include="../icon.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
