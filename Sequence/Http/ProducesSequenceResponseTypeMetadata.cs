@@ -1,12 +1,11 @@
 ﻿using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.Net.Http.Headers;
-using System.Reflection;
 
 namespace Juner.AspNetCore.Sequence.Http;
 
 public class ProducesSequenceResponseTypeMetadata : IProducesSequenceResponseTypeMetadata, IProducesResponseTypeMetadata
 {
-    public ProducesSequenceResponseTypeMetadata(int statusCode, Type? itemType = null, string[]? contentTypes = null)
+    public ProducesSequenceResponseTypeMetadata(int statusCode, Type? itemType = null, IContent[]? contentTypes = null)
     {
         StatusCode = statusCode;
         ItemType = itemType;
@@ -14,16 +13,18 @@ public class ProducesSequenceResponseTypeMetadata : IProducesSequenceResponseTyp
         if (contentTypes is null || contentTypes.Length == 0)
         {
             ContentTypes = [];
+            OnlyContentTypes = [];
         }
         else
         {
             for (var i = 0; i < contentTypes.Length; i++)
             {
-                MediaTypeHeaderValue.Parse(contentTypes[i]);
-                ValidateContentType(contentTypes[i]);
+                MediaTypeHeaderValue.Parse(contentTypes[i].ContentType);
+                ValidateContentType(contentTypes[i].ContentType);
             }
 
             ContentTypes = contentTypes;
+            OnlyContentTypes = [.. contentTypes.Select(v => v.ContentType)];
         }
 
         static void ValidateContentType(string type)
@@ -40,5 +41,9 @@ public class ProducesSequenceResponseTypeMetadata : IProducesSequenceResponseTyp
 
     public int StatusCode { get; init; }
 
-    public IEnumerable<string> ContentTypes { get; init; }
+    public IReadOnlyList<IContent> ContentTypes { get; init; }
+
+    IEnumerable<string> IProducesResponseTypeMetadata.ContentTypes => OnlyContentTypes;
+
+    IReadOnlyList<string> OnlyContentTypes { get; init; }
 }

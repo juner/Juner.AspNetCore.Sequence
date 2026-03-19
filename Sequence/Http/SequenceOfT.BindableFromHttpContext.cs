@@ -52,7 +52,7 @@ public partial class Sequence<T> : IBindableFromHttpContext<Sequence<T>>
 
         var jsonTypeInfo = (JsonTypeInfo<T>)serializerOptions.GetTypeInfo(typeof(T));
 
-        foreach (var (match, func, _) in MakePatternActionList)
+        foreach (var (match, func, _, _) in MakePatternActionList)
             if (match(mediaTypeHeaderValue))
                 return func(mediaTypeHeaderValue, jsonTypeInfo, request, cancellationToken);
         return default;
@@ -81,7 +81,7 @@ public partial class Sequence<T> : IBindableFromHttpContext<Sequence<T>>
     /// </summary>
     /// <param name="Match"></param>
     /// <param name="Action"></param>
-    record struct PatternAction(Func<MediaTypeHeaderValue, bool> Match, Func<MediaTypeHeaderValue, JsonTypeInfo<T>, HttpRequest, CancellationToken, Sequence<T>> Action, string ContentType);
+    record struct PatternAction(Func<MediaTypeHeaderValue, bool> Match, Func<MediaTypeHeaderValue, JsonTypeInfo<T>, HttpRequest, CancellationToken, Sequence<T>> Action, string ContentType, bool IsStreaming);
     static IEnumerable<PatternAction> MakePatternActions()
     {
         {
@@ -91,7 +91,7 @@ public partial class Sequence<T> : IBindableFromHttpContext<Sequence<T>>
 #else
                 "application/json-seq";
 #endif
-            yield return new(IsJsonSeq, JsonSeq, contentType);
+            yield return new(IsJsonSeq, JsonSeq, contentType, true);
             static bool IsJsonSeq(MediaTypeHeaderValue mediaTypeHeaderValue) => mediaTypeHeaderValue.MediaType.Equals(contentType, StringComparison.OrdinalIgnoreCase) == true;
             static Sequence<T> JsonSeq(MediaTypeHeaderValue mediaTypeHeaderValue, JsonTypeInfo<T> jsonTypeInfo, HttpRequest request, CancellationToken cancellationToken)
             {
@@ -109,13 +109,13 @@ public partial class Sequence<T> : IBindableFromHttpContext<Sequence<T>>
             {
                 // application/x-ndjson support
                 const string contentType = "application/x-ndjson";
-                yield return new(IsNdJson, JsonLine, contentType);
+                yield return new(IsNdJson, JsonLine, contentType, true);
                 static bool IsNdJson(MediaTypeHeaderValue mediaTypeHeaderValue) => mediaTypeHeaderValue.MediaType.Equals(contentType, StringComparison.OrdinalIgnoreCase) == true;
             }
             {
                 // application/jsonl support
                 const string contentType = "application/jsonl";
-                yield return new(IsJsonLine, JsonLine, contentType);
+                yield return new(IsJsonLine, JsonLine, contentType, true);
                 static bool IsJsonLine(MediaTypeHeaderValue mediaTypeHeaderValue) => mediaTypeHeaderValue.MediaType.Equals(contentType, StringComparison.OrdinalIgnoreCase) == true;
             }
             static Sequence<T> JsonLine(MediaTypeHeaderValue mediaTypeHeaderValue, JsonTypeInfo<T> jsonTypeInfo, HttpRequest request, CancellationToken cancellationToken)
@@ -136,7 +136,7 @@ public partial class Sequence<T> : IBindableFromHttpContext<Sequence<T>>
             const string contentType = MediaTypeNames.Application.Json;
             const string contentTypeStart = "application/";
             const string contentTypeEnd = "+json";
-            yield return new(IsJson, Json, contentType);
+            yield return new(IsJson, Json, contentType, false);
             static bool IsJson(MediaTypeHeaderValue mediaTypeHeaderValue)
                 => mediaTypeHeaderValue.MediaType.Equals(contentType, StringComparison.OrdinalIgnoreCase) == true
                     || (

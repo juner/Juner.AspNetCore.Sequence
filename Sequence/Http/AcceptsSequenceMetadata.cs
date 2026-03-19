@@ -5,7 +5,7 @@ namespace Juner.AspNetCore.Sequence.Http;
 
 public class AcceptsSequenceMetadata : IAcceptsSequenceMetadata, IAcceptsMetadata
 {
-    public AcceptsSequenceMetadata(Type? itemType = null, string[]? contentTypes = null, bool isOptional = false)
+    public AcceptsSequenceMetadata(Type? itemType = null, IContent[]? contentTypes = null, bool isOptional = false)
     {
         ItemType = itemType;
         IsOptional = isOptional;
@@ -13,16 +13,18 @@ public class AcceptsSequenceMetadata : IAcceptsSequenceMetadata, IAcceptsMetadat
         if (contentTypes is null || contentTypes.Length == 0)
         {
             ContentTypes = [];
+            OnlyContentTypes = [];
         }
         else
         {
             for (var i = 0; i < contentTypes.Length; i++)
             {
-                MediaTypeHeaderValue.Parse(contentTypes[i]);
-                ValidateContentType(contentTypes[i]);
+                MediaTypeHeaderValue.Parse(contentTypes[i].ContentType);
+                ValidateContentType(contentTypes[i].ContentType);
             }
 
             ContentTypes = contentTypes;
+            OnlyContentTypes = [.. contentTypes.Select(v => v.ContentType)];
         }
 
         static void ValidateContentType(string type)
@@ -33,7 +35,12 @@ public class AcceptsSequenceMetadata : IAcceptsSequenceMetadata, IAcceptsMetadat
             }
         }
     }
-    public IReadOnlyList<string> ContentTypes { get; init; }
+
+    public IReadOnlyList<IContent> ContentTypes { get; init; }
+
+    IReadOnlyList<string> IAcceptsMetadata.ContentTypes => OnlyContentTypes;
+
+    IReadOnlyList<string> OnlyContentTypes { get; init; }
 
     public Type? RequestType => typeof(Stream);
 

@@ -9,4 +9,9 @@ public interface IProducesSequenceResponseTypeMetadata : IProducesResponseTypeMe
     /// </summary>
     Type? ItemType { get; }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    new IReadOnlyList<IContent> ContentTypes { get; }
+
 }

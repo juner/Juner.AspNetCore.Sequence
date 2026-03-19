@@ -9,9 +9,7 @@
 
 using Juner.AspNetCore.Sequence.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.OpenApi;
 using System.Runtime.CompilerServices;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 
@@ -22,7 +20,8 @@ builder.Services.AddOpenApi(options
     {
         document.Info.Title = "Minimal API JSON Sequence Streaming Sample";
         return Task.CompletedTask;
-    }));
+    }))
+    .AddSequenceOpenApi();
 
 builder.Services.AddLogging(
     static builder => {
@@ -247,30 +246,6 @@ app.MapGet("/countup/{count:int}", ([FromRoute]int count, CancellationToken canc
 {
     operation.Summary = "Count up stream";
     operation.Description = "Returns a JSON Sequence stream of numbers";
-
-/*     (operation.Responses ??= [])["200"] = new OpenApiResponse()
-    {
-        Description = "JSON Sequence stream",
-        Content = new Dictionary<string, OpenApiMediaType>
-        {
-            ["application/json-seq"] = new()
-            {
-                Schema = new OpenApiSchema
-                {
-                    Description = "Returns a JSON Sequence stream (RFC 7464)",
-                    Type = JsonSchemaType.String,
-                },
-                Extensions = new Dictionary<string, IOpenApiExtension>
-                {
-                    ["x-itemSchema"] = new JsonNodeExtension(new JsonObject(new Dictionary<string, JsonNode?>()
-                    {
-                        ["type"] = JsonValue.Create("integer"),
-                        ["format"] = JsonValue.Create("int32"),
-                    })),
-                },
-            },
-        },
-    }; */
     return Task.CompletedTask;
 });
 app.MapPost("/addition", async (Sequence<int> nums, CancellationToken cancellationToken) =>
@@ -285,44 +260,6 @@ app.MapPost("/addition", async (Sequence<int> nums, CancellationToken cancellati
 {
     operation.Summary = "Addition stream";
     operation.Description = "Accepts a JSON Sequence stream of integers";
-
-    /* operation.RequestBody = new OpenApiRequestBody()
-    {
-        Content = new Dictionary<string, OpenApiMediaType>{
-            ["application/json-seq"] = new()
-            {
-                Schema = new OpenApiSchema()
-                {
-                    Description = "Request a JSON Sequence stream (RFC 7464)",
-                    Type = JsonSchemaType.String,
-                },
-                Extensions = new Dictionary<string, IOpenApiExtension>
-                {
-                    ["x-streaming"] = new JsonNodeExtension(JsonValue.Create(true)),
-                    ["x-itemSchema"] = new JsonNodeExtension(new JsonObject(new Dictionary<string, JsonNode?>()
-                    {
-                        ["type"] = JsonValue.Create("integer"),
-                        ["format"] = JsonValue.Create("int32"),
-                    })),
-                },
-            }
-        }
-    };
-    (operation.Responses ??=[])["200"] = new OpenApiResponse()
-    {
-        Description = "Sum result",
-        Content = new Dictionary<string, OpenApiMediaType>
-        {
-            ["application/json"] = new()
-            {
-                Schema = new OpenApiSchema()
-                {
-                    Type = JsonSchemaType.Integer,
-                    Format = "int32",
-                }
-            }
-        }
-    }; */
     return Task.CompletedTask;
 });
 
@@ -348,4 +285,7 @@ static partial class Log
 
 [JsonSerializable(typeof(Stream))]
 [JsonSerializable(typeof(int))]
+[JsonSerializable(typeof(string))]
+[JsonSerializable(typeof(IAsyncEnumerable<int>))]
+[JsonSerializable(typeof(IAsyncEnumerable<string>))]
 partial class JsonSchemaContext : JsonSerializerContext {}

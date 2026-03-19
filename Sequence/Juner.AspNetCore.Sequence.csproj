@@ -23,6 +23,9 @@ Supports NDJSON, JSON Lines, JSON Sequence, and JSON arrays using IAsyncEnumerab
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+  
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Update="Microsoft.OpenApi" />
   </ItemGroup>

@@ -26,6 +26,7 @@
 			"**/Thumbs.db": true,
 			"Sequence": true,
 			"Sequence.Tests": true,
+			"samples": true,
 		},
 		"explorer.fileNesting.enabled": true,
 		"explorer.fileNesting.patterns": {

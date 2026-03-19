@@ -70,6 +70,6 @@ public sealed class JsonSequenceResult<T> : SequenceResultBase<T>, IEndpointMeta
         builder.Metadata.Add(new ProducesSequenceResponseTypeMetadata(
             STATUS_CODE,
             typeof(T),
-            [CONTENT_TYPE]));
+            [new Content(CONTENT_TYPE, true)]));
     }
 }
