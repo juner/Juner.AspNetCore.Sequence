@@ -248,7 +248,7 @@ app.MapGet("/countup/{count:int}", ([FromRoute]int count, CancellationToken canc
     operation.Summary = "Count up stream";
     operation.Description = "Returns a JSON Sequence stream of numbers";
 
-    (operation.Responses ??= [])["200"] = new OpenApiResponse()
+/*     (operation.Responses ??= [])["200"] = new OpenApiResponse()
     {
         Description = "JSON Sequence stream",
         Content = new Dictionary<string, OpenApiMediaType>
@@ -270,7 +270,7 @@ app.MapGet("/countup/{count:int}", ([FromRoute]int count, CancellationToken canc
                 },
             },
         },
-    };
+    }; */
     return Task.CompletedTask;
 });
 app.MapPost("/addition", async (Sequence<int> nums, CancellationToken cancellationToken) =>
@@ -286,7 +286,7 @@ app.MapPost("/addition", async (Sequence<int> nums, CancellationToken cancellati
     operation.Summary = "Addition stream";
     operation.Description = "Accepts a JSON Sequence stream of integers";
 
-    operation.RequestBody = new OpenApiRequestBody()
+    /* operation.RequestBody = new OpenApiRequestBody()
     {
         Content = new Dictionary<string, OpenApiMediaType>{
             ["application/json-seq"] = new()
@@ -322,7 +322,7 @@ app.MapPost("/addition", async (Sequence<int> nums, CancellationToken cancellati
                 }
             }
         }
-    };
+    }; */
     return Task.CompletedTask;
 });
 
@@ -346,5 +346,6 @@ static partial class Log
 }
 
 
+[JsonSerializable(typeof(Stream))]
 [JsonSerializable(typeof(int))]
 partial class JsonSchemaContext : JsonSerializerContext {}

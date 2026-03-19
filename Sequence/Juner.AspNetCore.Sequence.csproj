@@ -19,10 +19,12 @@ Supports NDJSON, JSON Lines, JSON Sequence, and JSON arrays using IAsyncEnumerab
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.201">
+    <PackageReference Include="Microsoft.SourceLink.GitHub">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Update="Microsoft.OpenApi" />
   </ItemGroup>
 
   <PropertyGroup>

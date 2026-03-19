@@ -1,6 +1,8 @@
-﻿namespace Juner.AspNetCore.Sequence.Http;
+﻿using Microsoft.AspNetCore.Http.Metadata;
 
-public interface IProducesSequenceResponseTypeMetadata
+namespace Juner.AspNetCore.Sequence.Http;
+
+public interface IProducesSequenceResponseTypeMetadata : IProducesResponseTypeMetadata
 {
     /// <summary>
     /// Gets the optimistic sequence return type of the action.

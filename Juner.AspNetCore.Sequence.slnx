@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/samples/Properties/">
+    <File Path="samples/Properties/launchSettings.json" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
     <File Path="Directory.Build.props" />
@@ -7,9 +10,12 @@
     <File Path="LICENSE" />
     <File Path="README.md" />
   </Folder>
-  <Project Path="Sequence.Tests/Juner.AspNetCore.Sequence.Tests.csproj" />
-  <Project Path="Sequence/Juner.AspNetCore.Sequence.csproj" />
-  <Folder Name="/samples/" >
+  <Folder Name="/samples/">
+    <File Path="samples/appsettings.Development.json" />
+    <File Path="samples/appsettings.json" />
+    <File Path="samples/MinimalApiJsonSequenceStreamingSample.cs" />
 
   </Folder>
+  <Project Path="Sequence.Tests/Juner.AspNetCore.Sequence.Tests.csproj" />
+  <Project Path="Sequence/Juner.AspNetCore.Sequence.csproj" />
 </Solution>
