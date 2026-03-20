@@ -2,7 +2,7 @@
 #:sdk Microsoft.NET.Sdk.Web
 #:project ../Sequence/Juner.AspNetCore.Sequence.csproj
 #:property UserSecretsId=DaiwaHouseUketsuke.Web       
-#:property RootNamespace=Juner.AspNetCore.Sequence.Net10AspNetCoreMvcSample
+#:property RootNamespace=Juner.AspNetCore.Sequence.Sample.MinimalApiJsonSequenceStreamingSample
 #:property TargetFramework=net10.0
 #:property TargetFrameworks=net10.0
 #:package Microsoft.AspNetCore.OpenApi@10.0.5
@@ -40,7 +40,10 @@ builder.Services.ConfigureHttpJsonOptions(options
 var app = builder.Build();
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
-app.MapGet("/", () => TypedResults.Content($$"""
+var main = app.MapGroup("");
+main.WithTags("Main");
+
+main.MapGet("/", () => TypedResults.Content($$"""
 <title>application/json-seq input / output sample</title>
 <style>
     .request {
@@ -185,8 +188,8 @@ function addtion() {
     async function close() {
         writer.close();
         const response = await complete;
-        const resultValue = await response.text();;
-        requestInfo(`= ${resultValue}`);
+        const resultValue = await response.text();
+        responseInfo(`${resultValue}`);
         result.innerText = resultValue;
         isComplete = true;
         requestInfo(`url:${url} finish.`);
@@ -228,18 +231,19 @@ function error(value) {
     <template id=templateError><div class="error"></div></template>
 </div>
 </div>
-""", "text/html; charset=utf-8"));
-
-app.MapGet("/countup/{count:int}", ([FromRoute]int count, CancellationToken cancellationToken) =>  {
+""", "text/html; charset=utf-8"))
+.WithMetadata(
+    new ProducesResponseTypeMetadata(StatusCodes.Status200OK, typeof(string), contentTypes: ["text/html"])
+);
+main.MapGet("/countup/{count:int}", ([FromRoute]int count, CancellationToken cancellationToken) =>  {
     Log.LogStart(logger);
-    return Results.Sequence(Enumerable(count, cancellationToken));
+    return TypedResults.Sequence(Enumerable(count, cancellationToken));
     static async IAsyncEnumerable<string> Enumerable(int count, [EnumeratorCancellation]CancellationToken cancellationToken)
     {
         for(var i = 0; i<= count; i++)
         {
             await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
             yield return $"{i}";
-            
         }
     }
 }).AddOpenApiOperationTransformer((operation, context, CancellationToken) =>
@@ -248,14 +252,14 @@ app.MapGet("/countup/{count:int}", ([FromRoute]int count, CancellationToken canc
     operation.Description = "Returns a JSON Sequence stream of numbers";
     return Task.CompletedTask;
 });
-app.MapPost("/addition", async (Sequence<int> nums, CancellationToken cancellationToken) =>
+main.MapPost("/addition", async (Sequence<int> nums, CancellationToken cancellationToken) =>
 {
     var addition = 0;
     await foreach(var num in nums.WithCancellation(cancellationToken))
     {
         addition += num;
     }
-    return Results.Ok(addition);
+    return TypedResults.Ok(addition);
 }).AddOpenApiOperationTransformer((operation, context, CancellationToken) =>
 {
     operation.Summary = "Addition stream";
