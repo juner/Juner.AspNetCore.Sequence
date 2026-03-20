@@ -60,6 +60,6 @@ public sealed class JsonLineResult<T> : SequenceResultBase<T>, IEndpointMetadata
         builder.Metadata.Add(new ProducesSequenceResponseTypeMetadata(
             STATUS_CODE,
             typeof(T),
-            [CONTENT_TYPE]));
+            [new Content(CONTENT_TYPE, true)]));
     }
 }

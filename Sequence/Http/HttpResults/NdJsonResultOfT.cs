@@ -60,6 +60,6 @@ public sealed class NdJsonResult<T> : SequenceResultBase<T>, IEndpointMetadataPr
         builder.Metadata.Add(new ProducesSequenceResponseTypeMetadata(
             STATUS_CODE,
             typeof(T),
-            [CONTENT_TYPE]));
+            [new Content(CONTENT_TYPE, true)]));
     }
 }

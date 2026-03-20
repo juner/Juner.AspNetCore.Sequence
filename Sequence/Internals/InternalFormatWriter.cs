@@ -52,16 +52,7 @@ internal static class InternalFormatWriter
         return find;
     }
 
-    static JsonTypeInfo? GetJsonTypeInfo(JsonSerializerOptions serializerOptions, Type type)
-    {
-        var declaredTypeJsonInfo = serializerOptions.GetTypeInfo(type);
-
-        var runtimeType = type;
-        if (declaredTypeJsonInfo.ShouldUseWith(runtimeType))
-            return declaredTypeJsonInfo;
-        else
-            return null;
-    }
+    static JsonTypeInfo GetJsonTypeInfo(JsonSerializerOptions serializerOptions, Type type) => serializerOptions.GetTypeInfo(type);
     public static Task WriteResponseBodyAsync(
         Type? objectType,
         object? @object,
@@ -91,7 +82,7 @@ internal static class InternalFormatWriter
     public static Task WriteAsync<Enumerable, T>(
         Enumerable? @object,
         HttpContext httpContext,
-        JsonTypeInfo? jsonTypeInfo,
+        JsonTypeInfo jsonTypeInfo,
         JsonSerializerOptions serializeOptions,
         Encoding SelectedEncoding,
         ILogger logger,
@@ -101,7 +92,7 @@ internal static class InternalFormatWriter
     {
         if (!TryGetOutputMode(typeof(Enumerable), out var OutputType, out var type))
             throw new InvalidOperationException($"not support output type ");
-        var jsonTypeInfo2 = (JsonTypeInfo<T>?)jsonTypeInfo;
+        var jsonTypeInfo2 = (JsonTypeInfo<T>)jsonTypeInfo;
         return OutputType switch
         {
             EnumerableType.AsyncEnumerable or EnumerableType.Sequence => WriteAsyncFromAsyncEnumerable(@object as IAsyncEnumerable<T>, httpContext, jsonTypeInfo2, serializeOptions, SelectedEncoding, logger, Begin, End, cancellationToken),
@@ -117,7 +108,7 @@ internal static class InternalFormatWriter
         Type objectType,
         object? @object,
         HttpContext httpContext,
-        JsonTypeInfo? jsonTypeInfo,
+        JsonTypeInfo jsonTypeInfo,
         JsonSerializerOptions serializeOptions,
         Encoding selectedEncoding,
         ILogger logger,
@@ -131,7 +122,7 @@ internal static class InternalFormatWriter
             (Func<
                 object?,
                 HttpContext,
-                JsonTypeInfo?,
+                JsonTypeInfo,
                 JsonSerializerOptions,
                 Encoding,
                 ILogger,
@@ -201,7 +192,7 @@ internal static class InternalFormatWriter
                 Func<
                     object?,
                     HttpContext,
-                    JsonTypeInfo?,
+                    JsonTypeInfo,
                     JsonSerializerOptions,
                     Encoding,
                     ILogger,
@@ -228,7 +219,7 @@ internal static class InternalFormatWriter
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode",
 Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switch, which is set to false by default for trimmed ASP.NET apps, ensures the JsonSerializer doesn't use Reflection.")]
     [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = "See above.")]
-    public static async Task WriteAsyncFromEnumerable<Enumerable, T>(Enumerable? values, HttpContext httpContext, JsonTypeInfo<T>? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ILogger logger, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
+    public static async Task WriteAsyncFromEnumerable<Enumerable, T>(Enumerable? values, HttpContext httpContext, JsonTypeInfo<T> JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ILogger logger, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
   where Enumerable : IEnumerable<T>
     {
         if (values is null) return;
@@ -284,7 +275,7 @@ Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switc
     Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switch, which is set to false by default for trimmed ASP.NET apps, ensures the JsonSerializer doesn't use Reflection.")]
     [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = "See above.")]
     public static async Task WriteAsyncFromAsyncEnumerable<AsyncEnumerable, T>(
-        AsyncEnumerable? values, HttpContext httpContext, JsonTypeInfo<T>? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ILogger logger, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
+        AsyncEnumerable? values, HttpContext httpContext, JsonTypeInfo<T> JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ILogger logger, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
       where AsyncEnumerable : IAsyncEnumerable<T>
     {
         if (values is null) return;
@@ -336,7 +327,7 @@ Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switc
         }
     }
     public static async Task WriteAsyncFromChannelReader<ChannelReader, T>(
-        ChannelReader? values, HttpContext httpContext, JsonTypeInfo<T>? JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ILogger logger, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
+        ChannelReader? values, HttpContext httpContext, JsonTypeInfo<T> JsonTypeInfo, JsonSerializerOptions SerializerOptions, Encoding SelectedEncoding, ILogger logger, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
       where ChannelReader : ChannelReader<T>
     {
         if (values is null) return;
@@ -401,7 +392,7 @@ Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switc
     }
 
 #if NET9_0_OR_GREATER
-    static async ValueTask WriteRecordAsync<T>(PipeWriter writer, T value, JsonTypeInfo<T>? jsonTypeInfo, JsonSerializerOptions SerializerOptions, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
+    static async ValueTask WriteRecordAsync<T>(PipeWriter writer, T value, JsonTypeInfo<T> jsonTypeInfo, JsonSerializerOptions SerializerOptions, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken)
     {
         if (Begin is not { IsEmpty: true})
             await writer.WriteAsync(Begin, cancellationToken);
@@ -414,7 +405,7 @@ Justification = "The 'JsonSerializer.IsReflectionEnabledByDefault' feature switc
         await writer.FlushAsync(cancellationToken);
     }
 #endif
-    static async ValueTask WriteRecordAsync<T>(Stream writer, T value, JsonTypeInfo<T>? jsonTypeInfo, JsonSerializerOptions SerializerOptions, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken = default)
+    static async ValueTask WriteRecordAsync<T>(Stream writer, T value, JsonTypeInfo<T> jsonTypeInfo, JsonSerializerOptions SerializerOptions, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, CancellationToken cancellationToken = default)
     {
         if (Begin is not { IsEmpty: true })
             await writer.WriteAsync(Begin, cancellationToken);

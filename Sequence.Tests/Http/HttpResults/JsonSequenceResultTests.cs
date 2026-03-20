@@ -158,7 +158,7 @@ public class JsonSequenceResultTests
         // Assert
         var producesResponseTypeMetadata = builder.Metadata.OfType<IProducesResponseTypeMetadata>().Last();
         Assert.AreEqual(StatusCodes.Status200OK, producesResponseTypeMetadata.StatusCode);
-        Assert.IsNull(producesResponseTypeMetadata.Type);
+        Assert.AreEqual(typeof(Stream), producesResponseTypeMetadata.Type);
         var producesSequenceResponseTypeMetadata = builder.Metadata.OfType<IProducesSequenceResponseTypeMetadata>().Last();
         Assert.AreEqual(typeof(Todo), producesSequenceResponseTypeMetadata?.ItemType);
         var jsonSequence =

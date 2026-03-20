@@ -5,6 +5,8 @@
         <PackageReference Update="MSTest" Version="4.1.0" />
         <PackageReference Update="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.5" />
         <PackageReference Update="Microsoft.SourceLink.GitHub" Version="10.0.201" />
+        <PackageReference Update="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
+        <PackageReference Update="Microsoft.OpenApi" Version="3.4.0" />
     </ItemGroup>
     <ItemGroup Condition="'$(TargetFramework)' == 'net7.0' Or '$(TargetFramework)' == 'net6.0'">
         <PackageReference Update="MSTest" Version="3.10.1" />

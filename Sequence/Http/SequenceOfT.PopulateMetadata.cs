@@ -1,0 +1,15 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http.Metadata;
+using System.Reflection;
+
+namespace Juner.AspNetCore.Sequence.Http;
+
+public sealed partial class Sequence<T> : IEndpointParameterMetadataProvider
+{
+    public static void PopulateMetadata(ParameterInfo parameter, EndpointBuilder builder)
+     => builder.Metadata.Add(new AcceptsSequenceMetadata(
+            itemType: typeof(T),
+            contentTypes: [.. MakePatternActionList.Select(v => new Content(v.ContentType, v.IsStreaming))],
+            isOptional: false
+        ));
+}

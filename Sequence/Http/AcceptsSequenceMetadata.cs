@@ -3,12 +3,12 @@ using Microsoft.Net.Http.Headers;
 
 namespace Juner.AspNetCore.Sequence.Http;
 
-public class ProducesSequenceResponseTypeMetadata : IProducesSequenceResponseTypeMetadata, IProducesResponseTypeMetadata
+public class AcceptsSequenceMetadata : IAcceptsSequenceMetadata, IAcceptsMetadata
 {
-    public ProducesSequenceResponseTypeMetadata(int statusCode, Type? itemType = null, IContent[]? contentTypes = null)
+    public AcceptsSequenceMetadata(Type? itemType = null, IContent[]? contentTypes = null, bool isOptional = false)
     {
-        StatusCode = statusCode;
         ItemType = itemType;
+        IsOptional = isOptional;
 
         if (contentTypes is null || contentTypes.Length == 0)
         {
@@ -35,15 +35,16 @@ public class ProducesSequenceResponseTypeMetadata : IProducesSequenceResponseTyp
             }
         }
     }
-    public Type? ItemType { get; init; }
-
-    Type? IProducesResponseTypeMetadata.Type => typeof(Stream);
-
-    public int StatusCode { get; init; }
 
     public IReadOnlyList<IContent> ContentTypes { get; init; }
 
-    IEnumerable<string> IProducesResponseTypeMetadata.ContentTypes => OnlyContentTypes;
+    IReadOnlyList<string> IAcceptsMetadata.ContentTypes => OnlyContentTypes;
 
     IReadOnlyList<string> OnlyContentTypes { get; init; }
+
+    public Type? RequestType => typeof(Stream);
+
+    public bool IsOptional { get; init; }
+
+    public Type? ItemType { get; init; }
 }

@@ -111,17 +111,17 @@ public partial class SequenceResult<T> : IStatusCodeHttpResult, ISequenceHttpRes
         builder.Metadata.Add(new ProducesSequenceResponseTypeMetadata(
             STATUS_CODE,
             typeof(T),
-            [.. MakePatternList.Select(v => v.ContentType)]));
+            [.. MakePatternList.Select(v => new Content(v.ContentType, v.IsStreaming))]));
     }
 
-    record MakePattern(string ContentType, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End);
+    record MakePattern(string ContentType, ReadOnlyMemory<byte> Begin, ReadOnlyMemory<byte> End, bool IsStreaming);
     static bool TryGetPattern(StringSegment contentType, out ReadOnlyMemory<byte> begin, out ReadOnlyMemory<byte> end)
     {
         begin = default;
         end = default;
         if (!MediaTypeHeaderValue.TryParse(contentType, out var parsedValue))
             return false;
-        foreach (var (mediaType, begin2, end2) in MakePatternList)
+        foreach (var (mediaType, begin2, end2, _) in MakePatternList)
             if (parsedValue.MediaType.Equals(mediaType, StringComparison.OrdinalIgnoreCase) == true)
             {
                 (begin, end) = (begin2, end2);
@@ -175,22 +175,22 @@ public partial class SequenceResult<T> : IStatusCodeHttpResult, ISequenceHttpRes
 #else
                 "application/json-seq";
 #endif
-            yield return new(contentType, RS, LF);
+            yield return new(contentType, RS, LF, true);
         }
         {
             const string contentType =
                 "application/x-ndjson";
-            yield return new(contentType, default, LF);
+            yield return new(contentType, default, LF, true);
         }
         {
             const string contentType =
                 "application/jsonl";
-            yield return new(contentType, default, LF);
+            yield return new(contentType, default, LF, true);
         }
         {
             const string contentType =
                 "application/json";
-            yield return new(contentType, default, default);
+            yield return new(contentType, default, default, false);
         }
 
     }

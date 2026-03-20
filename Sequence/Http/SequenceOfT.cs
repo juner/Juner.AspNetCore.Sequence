@@ -1,9 +1,10 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.Extensions.Logging;
 using System.Threading.Channels;
 
 namespace Juner.AspNetCore.Sequence.Http;
 
-public sealed partial class Sequence<T> : IAsyncEnumerable<T>
+public sealed partial class Sequence<T> : IAsyncEnumerable<T>, IEndpointParameterMetadataProvider
 {
     readonly object? _values;
     public Sequence(IAsyncEnumerable<T> values) => _values = values;
@@ -35,6 +36,7 @@ public sealed partial class Sequence<T> : IAsyncEnumerable<T>
     {
         yield break;
     }
+
     static partial class Log
     {
         [LoggerMessage(
