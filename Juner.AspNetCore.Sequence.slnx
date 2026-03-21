@@ -14,6 +14,7 @@
     <File Path="samples/appsettings.Development.json" />
     <File Path="samples/appsettings.json" />
     <File Path="samples/MinimalApiJsonSequenceStreamingSample.cs" />
+    <File Path="samples/MvcJsonSequenceStreamingSample.cs" />
 
   </Folder>
   <Project Path="Sequence.Tests/Juner.AspNetCore.Sequence.Tests.csproj" />
