@@ -270,7 +270,6 @@ namespace Juner.AspNetCore.Sequence.Sample.MvcJsonSequenceStreamingSample
 
         /// <summary>
         /// Addition stream <br/>
-        /// note: use <q>[Consumes(typeof(IAsyncEnumerable&lt;T&gt;), "application/json-seq"]</q> is broken openapi type
         /// </summary>
         /// <param name="nums"></param>
         /// <returns></returns>
