@@ -235,6 +235,7 @@ function error(value) {
 .WithMetadata(
     new ProducesResponseTypeMetadata(StatusCodes.Status200OK, typeof(string), contentTypes: ["text/html"])
 );
+
 main.MapGet("/countup/{count:int}", ([FromRoute]int count, CancellationToken cancellationToken) =>  {
     Log.LogStart(logger);
     return TypedResults.Sequence(Enumerable(count, cancellationToken));
@@ -246,12 +247,10 @@ main.MapGet("/countup/{count:int}", ([FromRoute]int count, CancellationToken can
             yield return $"{i}";
         }
     }
-}).AddOpenApiOperationTransformer((operation, context, CancellationToken) =>
-{
-    operation.Summary = "Count up stream";
-    operation.Description = "Returns a JSON Sequence stream of numbers";
-    return Task.CompletedTask;
-});
+})
+.WithSummary("Count up stream")
+.WithDescription("Returns a JSON Sequence stream of numbers");
+
 main.MapPost("/addition", async (Sequence<int> nums, CancellationToken cancellationToken) =>
 {
     var addition = 0;
@@ -260,12 +259,9 @@ main.MapPost("/addition", async (Sequence<int> nums, CancellationToken cancellat
         addition += num;
     }
     return TypedResults.Ok(addition);
-}).AddOpenApiOperationTransformer((operation, context, CancellationToken) =>
-{
-    operation.Summary = "Addition stream";
-    operation.Description = "Accepts a JSON Sequence stream of integers";
-    return Task.CompletedTask;
-});
+})
+.WithSummary("Addition stream")
+.WithDescription("Accepts a JSON Sequence stream of integers");
 
 app.MapOpenApi("/openapi/{documentName}.json");
 
@@ -285,7 +281,6 @@ static partial class Log
     public static partial void LogMessage(ILogger logger, string message);
     
 }
-
 
 [JsonSerializable(typeof(Stream))]
 [JsonSerializable(typeof(int))]
