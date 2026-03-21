@@ -344,3 +344,5 @@ Serialization and deserialization are performed incrementally.
 [https://jsonlines.org](https://jsonlines.org)
 * JSON streaming - Wikipedia (en) \
 [https://en.wikipedia.org/wiki/JSON_streaming](https://en.wikipedia.org/wiki/JSON_streaming)
+* npm:json-seq-stream
+[https://www.npmjs.com/package/json-seq-stream](https://www.npmjs.com/package/json-seq-stream/v/1.0.10)
