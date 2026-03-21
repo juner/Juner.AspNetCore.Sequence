@@ -238,7 +238,7 @@ function error(value) {
 
 main.MapGet("/countup/{count:int}", ([FromRoute]int count, CancellationToken cancellationToken) =>  {
     Log.LogStart(logger);
-    return TypedResults.Sequence(Enumerable(count, cancellationToken));
+    return TypedResults.JsonSequence(Enumerable(count, cancellationToken));
     static async IAsyncEnumerable<string> Enumerable(int count, [EnumeratorCancellation]CancellationToken cancellationToken)
     {
         for(var i = 0; i<= count; i++)
@@ -260,6 +260,7 @@ main.MapPost("/addition", async (Sequence<int> nums, CancellationToken cancellat
     }
     return TypedResults.Ok(addition);
 })
+.Accepts<IAsyncEnumerable<int>>("application/json-seq")
 .WithSummary("Addition stream")
 .WithDescription("Accepts a JSON Sequence stream of integers");
 

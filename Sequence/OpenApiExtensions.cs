@@ -1,10 +1,8 @@
 #if NET10_0_OR_GREATER
 using Juner.AspNetCore.Sequence.Http;
-using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
-using System.Reflection.Metadata;
 using System.Text.Json.Nodes;
 
 #pragma warning disable IDE0130 // Namespace がフォルダー構造と一致しません
@@ -76,10 +74,7 @@ public class SequenceOpenApiTransformer: IOpenApiOperationTransformer
             var isStreaming = contentType_.IsStreaming;
             if (string.IsNullOrEmpty(contentType)) continue;
             if (!content.TryGetValue(contentType, out var mediaType))
-            {
-                mediaType = new OpenApiMediaType();
-                content[contentType] = mediaType;
-            }
+                continue;
             if (isStreaming)
             {
                 mediaType.Schema ??= (schema ??= await context.GetOrCreateSchemaAsync(typeof(Stream), cancellationToken: cancellationToken));
@@ -114,10 +109,8 @@ public class SequenceOpenApiTransformer: IOpenApiOperationTransformer
             var statusCode = $"{metadata.StatusCode}";
             OpenApiResponse response;
             if (!responses.TryGetValue(statusCode, out var response2))
-            {
-                response = new OpenApiResponse();
-                responses[statusCode] = response;
-            } else if (response2 is OpenApiResponse response3)
+                continue;
+            else if (response2 is OpenApiResponse response3)
             {
                 response = response3;
             } else {
@@ -135,10 +128,7 @@ public class SequenceOpenApiTransformer: IOpenApiOperationTransformer
                 var contentType = contentType_.ContentType;
                 var isStreaming = contentType_.IsStreaming;
                 if (!(response.Content ??= new Dictionary<string, OpenApiMediaType>()).TryGetValue(contentType, out var schema_))
-                {
-                    schema_ = new OpenApiMediaType();
-                    response.Content.Add(contentType, schema_);
-                }
+                    continue;
 
                 if (isStreaming)
                 {
