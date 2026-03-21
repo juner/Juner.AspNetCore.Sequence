@@ -1,6 +1,10 @@
 # Juner.AspNetCore.Sequence
 
-Streaming JSON sequence support for ASP.NET Core.
+> [!CAUTION]
+> This package is currently in preview.
+> APIs may change in future releases.
+
+Streaming JSON formats (NDJSON, JSON Lines, JSON Sequence) for ASP.NET Core.
 
 `Juner.AspNetCore.Sequence` is an ASP.NET Core formatter that provides
 **streaming JSON support** for:
@@ -52,7 +56,7 @@ app.MapPost("/process", async (Sequence<Person> sequence) =>
 
 Request (NDJSON):
 
-```
+```jsonl
 {"name":"alice"}
 {"name":"bob"}
 ```
@@ -69,10 +73,19 @@ dotnet add package Juner.AspNetCore.Sequence
 
 ## Setup
 
+### Minimal API
+
 ```csharp
+builder.Services.AddSequenceOpenApi();
+```
+
+### ASP.NET Core (MVC)
+
+```csharp
+builder.Services.AddSequenceOpenApi();
 builder.Services.AddControllers()
     .AddSequenceFormatter();
-```
+``
 
 ---
 
@@ -248,7 +261,7 @@ app.MapPost("/ndjson",
 
 Request:
 
-```
+```text
 {"id":1}
 {"id":2}
 {"id":3}
@@ -258,18 +271,21 @@ Request:
 
 ## Comparison
 
-| Feature             | Standard ASP.NET Core | With This Library |
-| ------------------- | --------------------- | ----------------- |
-| JSON Array          | ✅                     | ✅                 |
-| NDJSON / JSONL      | ❌                     | ✅                 |
-| JSON Sequence       | ❌                     | ✅                 |
-| Minimal API binding | ⚠️ JSON only          | ✅                 |
-| Streaming input     | ❌                     | ✅                 |
-| Streaming output    | ⚠️ limited            | ✅                 |
+| Feature | Standard ASP.NET Core | With This Library |
+| ------- | --------------------- | ----------------- |
+| JSON Array | ✅ | ✅ |
+| NDJSON / JSONL | ❌ | ✅ |
+| JSON Sequence | ❌ | ✅ |
+| Minimal API binding | ⚠️ JSON only | ✅ |
+| Request streaming (NDJSON etc.) | ❌ | ✅ |
+| Streaming output | ⚠️ limited | ✅ |
 
 ---
 
 ## OpenAPI support
+
+> [!CAUTION]
+> `AddSequenceOpenApi()` is currently available only for .NET 10
 
 OpenAPI (Swagger) does not fully support streaming formats such as:
 
@@ -295,8 +311,7 @@ Supported formats can be bound to multiple types, including:
 * `ChannelReader<T>`
 * `Sequence<T>`
 
-`Sequence<T>` acts as an optional abstraction for
-format-agnostic streaming processing.
+`Sequence<T>` is a wrapper that enables unified streaming input handling across formats.
 
 The implementation is based on:
 
@@ -320,3 +335,14 @@ Serialization and deserialization are performed incrementally.
 ## License
 
 [MIT](./LICENSE)
+
+## See also
+
+* RFC 7464 - JavaScript Object Notation (JSON) Text Sequences \
+[https://datatracker.ietf.org/doc/html/rfc7464](https://datatracker.ietf.org/doc/html/rfc7464)
+* JSON Lines \
+[https://jsonlines.org](https://jsonlines.org)
+* JSON streaming - Wikipedia (en) \
+[https://en.wikipedia.org/wiki/JSON_streaming](https://en.wikipedia.org/wiki/JSON_streaming)
+* npm:json-seq-stream
+[https://www.npmjs.com/package/json-seq-stream](https://www.npmjs.com/package/json-seq-stream/v/1.0.10)

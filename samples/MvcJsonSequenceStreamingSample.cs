@@ -19,7 +19,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi(options
  => options.AddDocumentTransformer((document, context, cancellationToken) =>
     {
-        document.Info.Title = "Minimal API JSON Sequence Streaming Sample";
+        document.Info.Title = "MVC JSON Sequence Streaming Sample";
         return Task.CompletedTask;
     }))
     .AddSequenceOpenApi();
@@ -253,10 +253,10 @@ namespace Juner.AspNetCore.Sequence.Sample.MvcJsonSequenceStreamingSample
         [HttpGet("countup/{count:int}")]
         [EndpointSummary("Count up stream")]
         [EndpointDescription("Returns a JSON Sequence stream of numbers")]
-        public SequenceResult<string> Countup([FromRoute] int count)
+        public JsonSequenceResult<string> Countup([FromRoute] int count)
         {
             LogStart();
-            return TypedResults.Sequence(Enumerable(count, HttpContext.RequestAborted));
+            return TypedResults.JsonSequence(Enumerable(count, HttpContext.RequestAborted));
             static async IAsyncEnumerable<string> Enumerable(int count, [EnumeratorCancellation] CancellationToken cancellationToken)
             {
                 for (var i = 0; i <= count; i++)
@@ -268,9 +268,15 @@ namespace Juner.AspNetCore.Sequence.Sample.MvcJsonSequenceStreamingSample
             }
         }
 
+        /// <summary>
+        /// Addition stream <br/>
+        /// </summary>
+        /// <param name="nums"></param>
+        /// <returns></returns>
         [HttpPost("addition")]
         [EndpointSummary("Addition stream")]
         [EndpointDescription("Accepts a JSON Sequence stream of integers")]
+        [Consumes(typeof(IAsyncEnumerable<int>), "application/json-seq")]
         public async Task<Ok<int>> Addition(Sequence<int> nums)
         {
             var addition = 0;
